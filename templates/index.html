@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block container_class %}dashboard-container{% endblock %}
+
+{% block content %}
+    <style>
+        .dashboard-container {
+            max-width: 800px;
+        }
+    </style>
+    <h2>Bentornato, {{ session['nickname'] }}!</h2>
+    <h3>Utenti Registrati</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Nome Completo</th>
+                <th>Nickname</th>
+                <th>Ultimo Accesso</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for user in users %}
+            <tr>
+                <td>{{ user['full_name'] }}</td>
+                <td>{{ user['nickname'] }}</td>
+                <td>{{ user['last_access'] if user['last_access'] else 'Mai' }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <a href="{{ url_for('auth.logout') }}" class="logout-link">Esci</a>
+{% endblock %}
