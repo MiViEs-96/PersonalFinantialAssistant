@@ -34,7 +34,7 @@ body {
     background-color: var(--card-bg);
     padding: 2rem;
     border-radius: 12px;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.2);
     width: 100%;
     max-width: 400px;
     text-align: center;
@@ -83,15 +83,27 @@ button:hover {
 
 .theme-toggle {
     position: absolute;
-    top: 1rem;
-    right: 1rem;
-    background: none;
+    top: 1.5rem;
+    right: 1.5rem;
+    background: var(--card-bg);
     border: 1px solid var(--border-color);
     color: var(--text-color);
-    padding: 0.5rem 1rem;
-    border-radius: 20px;
+    padding: 0.5rem;
+    border-radius: 50%;
     cursor: pointer;
-    width: auto;
+    width: 45px;
+    height: 45px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 1.5rem;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.theme-toggle:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 15px rgba(0,0,0,0.2);
 }
 
 .flash-messages {

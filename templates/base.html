@@ -7,7 +7,9 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-    <button class="theme-toggle" onclick="toggleTheme()">Cambia Tema</button>
+    <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" aria-label="Cambia Tema">
+        <span id="theme-icon">🌙</span>
+    </button>
     <div class="container {% block container_class %}{% endblock %}">
         {% with messages = get_flashed_messages() %}
           {% if messages %}
@@ -23,16 +25,23 @@
     </div>
 
     <script>
+        function updateIcon(theme) {
+            const icon = document.getElementById('theme-icon');
+            icon.textContent = theme === 'dark' ? '☀️' : '🌙';
+        }
+
         function toggleTheme() {
             const currentTheme = document.documentElement.getAttribute('data-theme');
             const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
             document.documentElement.setAttribute('data-theme', newTheme);
             localStorage.setItem('theme', newTheme);
+            updateIcon(newTheme);
         }
 
         // Apply saved theme
         const savedTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
         document.documentElement.setAttribute('data-theme', savedTheme);
+        updateIcon(savedTheme);
     </script>
 </body>
 </html>
