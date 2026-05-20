@@ -7,15 +7,21 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-    <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" aria-label="Cambia Tema">
+    <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" aria-label="{{ _('change_theme') }}">
         <span id="theme-icon">🌙</span>
     </button>
+
+    <div class="lang-selector">
+        <a href="{{ url_for('set_lang', lang='it') }}" class="lang-btn">IT</a>
+        <a href="{{ url_for('set_lang', lang='en') }}" class="lang-btn">EN</a>
+        <a href="{{ url_for('set_lang', lang='zh') }}" class="lang-btn">中文</a>
+    </div>
 
     {% if session['nickname'] %}
     <div class="user-widget">
         <div class="user-info">
-            <div>Benvenuto, <strong>{{ session['nickname'] }}</strong></div>
-            <a href="{{ url_for('auth.logout') }}" class="logout-link">Esci</a>
+            <div>{{ _('welcome') }}, <strong>{{ session['nickname'] }}</strong></div>
+            <a href="{{ url_for('auth.logout') }}" class="logout-link">{{ _('logout') }}</a>
         </div>
         <div class="user-avatar">
             {% if session['profile_pic'] %}

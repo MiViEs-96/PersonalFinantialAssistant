@@ -1,19 +1,19 @@
 {% extends "base.html" %}
 
-{% block title %}Login{% endblock %}
+{% block title %}{{ _('login') }}{% endblock %}
 
 {% block content %}
-    <h2>Accedi</h2>
+    <h2>{{ _('login') }}</h2>
     <form method="POST">
         <div class="form-group">
-            <label for="identifier">Nickname o Nome Completo</label>
+            <label for="identifier">{{ _('nickname_or_full_name') }}</label>
             <input type="text" name="identifier" id="identifier" required>
         </div>
         <div class="form-group">
-            <label for="password">Password</label>
+            <label for="password">{{ _('password') }}</label>
             <input type="password" name="password" id="password" required>
         </div>
-        <button type="submit">Entra</button>
+        <button type="submit">{{ _('enter') }}</button>
     </form>
-    <p>Non hai un account? <a href="{{ url_for('auth.register') }}" style="color: var(--accent-color);">Registrati qui</a></p>
+    <p>{{ _('no_account') }} <a href="{{ url_for('auth.register') }}" style="color: var(--accent-color);">{{ _('register_here') }}</a></p>
 {% endblock %}

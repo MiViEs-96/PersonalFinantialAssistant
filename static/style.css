@@ -87,6 +87,33 @@ button:hover {
     position: fixed;
     top: 1.5rem;
     left: 1.5rem;
+    z-index: 1000;
+}
+
+.lang-selector {
+    position: fixed;
+    top: 1.5rem;
+    left: 5rem;
+    display: flex;
+    gap: 0.5rem;
+    z-index: 1000;
+}
+
+.lang-btn {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    color: var(--text-color);
+    padding: 0.25rem 0.5rem;
+    border-radius: 8px;
+    cursor: pointer;
+    text-decoration: none;
+    font-size: 0.8rem;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.lang-btn:hover {
+    background: var(--bg-color);
+}
     background: var(--card-bg);
     border: 1px solid var(--border-color);
     color: var(--text-color);

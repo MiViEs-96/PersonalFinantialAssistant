@@ -1,13 +1,31 @@
-from flask import Flask, render_template, session, redirect, url_for, request
+from flask import Flask, render_template, session, redirect, url_for, request, g
 from auth import auth_bp
 import database_manager
 import os
+import translations
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
 
 # Register Blueprints
 app.register_blueprint(auth_bp)
+
+@app.before_request
+def before_request():
+    g.lang = session.get('lang', 'it')
+
+@app.context_processor
+def inject_translations():
+    lang = g.lang
+    def translate(key):
+        return translations.TRANSLATIONS.get(lang, translations.TRANSLATIONS['it']).get(key, key)
+    return dict(_=translate)
+
+@app.route('/set_lang/<lang>')
+def set_lang(lang):
+    if lang in translations.TRANSLATIONS:
+        session['lang'] = lang
+    return redirect(request.referrer or url_for('index'))
 
 @app.route('/')
 def index():

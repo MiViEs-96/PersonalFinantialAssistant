@@ -1,26 +1,26 @@
 {% extends "base.html" %}
 
-{% block title %}Home{% endblock %}
+{% block title %}{{ _('home') }}{% endblock %}
 
 {% block content %}
-    <h2>Gestione Transazioni</h2>
+    <h2>{{ _('transaction_management') }}</h2>
 
     <div class="nav-links">
-        <a href="{{ url_for('index') }}">Home</a>
-        <a href="{{ url_for('stats') }}">Statistiche</a>
+        <a href="{{ url_for('index') }}">{{ _('home') }}</a>
+        <a href="{{ url_for('stats') }}">{{ _('stats') }}</a>
     </div>
 
     <div style="margin-top: 2rem;">
-        <h3>Aggiungi Nuova Transazione</h3>
+        <h3>{{ _('add_new_transaction') }}</h3>
         <form action="{{ url_for('add_transaction') }}" method="POST">
             <table class="transaction-form-table">
                 <thead>
                     <tr>
-                        <th>Data</th>
-                        <th>Importo</th>
-                        <th>Valuta</th>
-                        <th>Tipo</th>
-                        <th>Categoria</th>
+                        <th>{{ _('date') }}</th>
+                        <th>{{ _('amount') }}</th>
+                        <th>{{ _('currency') }}</th>
+                        <th>{{ _('type') }}</th>
+                        <th>{{ _('category') }}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -35,34 +35,34 @@
                         </td>
                         <td>
                             <select name="direction">
-                                <option value="uscita">Uscita</option>
-                                <option value="entrata">Entrata</option>
+                                <option value="uscita">{{ _('expense') }}</option>
+                                <option value="entrata">{{ _('income') }}</option>
                             </select>
                         </td>
                         <td><input type="text" name="category" placeholder="es. Cibo" required></td>
                     </tr>
                     <tr>
-                        <th colspan="5">Commento (Opzionale)</th>
+                        <th colspan="5">{{ _('comment') }}</th>
                     </tr>
                     <tr>
-                        <td colspan="5"><input type="text" name="comment" placeholder="Aggiungi una nota..."></td>
+                        <td colspan="5"><input type="text" name="comment" placeholder="{{ _('add_note') }}"></td>
                     </tr>
                 </tbody>
             </table>
-            <button type="submit" style="width: auto; padding: 0.75rem 2rem;">Aggiungi</button>
+            <button type="submit" style="width: auto; padding: 0.75rem 2rem;">{{ _('add') }}</button>
         </form>
     </div>
 
     <div style="margin-top: 3rem;">
-        <h3>Ultime Transazioni</h3>
+        <h3>{{ _('latest_transactions') }}</h3>
         <table>
             <thead>
                 <tr>
-                    <th>Data</th>
-                    <th>Importo</th>
-                    <th>Tipo</th>
-                    <th>Categoria</th>
-                    <th>Commento</th>
+                    <th>{{ _('date') }}</th>
+                    <th>{{ _('amount') }}</th>
+                    <th>{{ _('type') }}</th>
+                    <th>{{ _('category') }}</th>
+                    <th>{{ _('comment') }}</th>
                 </tr>
             </thead>
             <tbody>
@@ -70,13 +70,13 @@
                 <tr style="color: {{ 'var(--success-color)' if t['direction'] == 'entrata' else 'inherit' }}">
                     <td>{{ t['date'] }}</td>
                     <td>{{ "%.2f"|format(t['amount']) }} {{ t['currency'] }}</td>
-                    <td>{{ t['direction'] | capitalize }}</td>
+                    <td>{{ _(t['direction']) }}</td>
                     <td>{{ t['category'] }}</td>
                     <td>{{ t['comment'] }}</td>
                 </tr>
                 {% else %}
                 <tr>
-                    <td colspan="5">Nessuna transazione trovata.</td>
+                    <td colspan="5">{{ _('no_transactions') }}</td>
                 </tr>
                 {% endfor %}
             </tbody>

@@ -1,43 +1,43 @@
 {% extends "base.html" %}
 
-{% block title %}Statistiche{% endblock %}
+{% block title %}{{ _('stats') }}{% endblock %}
 
 {% block content %}
-    <h2>Analisi Spese ed Entrate</h2>
+    <h2>{{ _('analysis') }}</h2>
 
     <div class="nav-links">
-        <a href="{{ url_for('index') }}">Home</a>
-        <a href="{{ url_for('stats') }}">Statistiche</a>
+        <a href="{{ url_for('index') }}">{{ _('home') }}</a>
+        <a href="{{ url_for('stats') }}">{{ _('stats') }}</a>
     </div>
 
     <div style="margin-top: 2rem;">
         <form method="GET" style="display: flex; gap: 1rem; justify-content: center; align-items: flex-end; flex-wrap: wrap;">
             <div class="form-group" style="margin-bottom: 0;">
-                <label for="start_date">Da:</label>
+                <label for="start_date">{{ _('from') }}:</label>
                 <input type="date" name="start_date" id="start_date" value="{{ start_date }}">
             </div>
             <div class="form-group" style="margin-bottom: 0;">
-                <label for="end_date">A:</label>
+                <label for="end_date">{{ _('to') }}:</label>
                 <input type="date" name="end_date" id="end_date" value="{{ end_date }}">
             </div>
-            <button type="submit" style="width: auto; margin-top: 0; padding: 0.6rem 1.5rem;">Filtra</button>
+            <button type="submit" style="width: auto; margin-top: 0; padding: 0.6rem 1.5rem;">{{ _('filter') }}</button>
         </form>
     </div>
 
     <div style="margin-top: 3rem; display: flex; flex-direction: column; gap: 3rem; align-items: center;">
 
         <div style="width: 100%; max-width: 400px;">
-            <h3>Riepilogo Entrate vs Uscite</h3>
+            <h3>{{ _('summary_income_expense') }}</h3>
             <canvas id="pieChart"></canvas>
         </div>
 
         <div style="width: 100%; max-width: 600px;">
-            <h3>Dettaglio Entrate per Categoria</h3>
+            <h3>{{ _('income_by_category') }}</h3>
             <canvas id="incomeBarChart"></canvas>
         </div>
 
         <div style="width: 100%; max-width: 600px;">
-            <h3>Dettaglio Uscite per Categoria</h3>
+            <h3>{{ _('expense_by_category') }}</h3>
             <canvas id="expenseBarChart"></canvas>
         </div>
     </div>
@@ -50,7 +50,7 @@
         new Chart(document.getElementById('pieChart'), {
             type: 'pie',
             data: {
-                labels: chartData.pie_labels,
+                labels: [ "{{ _('incomes') }}", "{{ _('expenses') }}" ],
                 datasets: [{
                     data: chartData.pie_data,
                     backgroundColor: ['#28a745', '#dc3545']
@@ -64,7 +64,7 @@
             data: {
                 labels: chartData.income_bar_labels,
                 datasets: [{
-                    label: 'Entrate (€)',
+                    label: "{{ _('incomes') }} (€)",
                     data: chartData.income_bar_values,
                     backgroundColor: '#28a745'
                 }]
@@ -80,7 +80,7 @@
             data: {
                 labels: chartData.expense_bar_labels,
                 datasets: [{
-                    label: 'Uscite (€)',
+                    label: "{{ _('expenses') }} (€)",
                     data: chartData.expense_bar_values,
                     backgroundColor: '#dc3545'
                 }]
