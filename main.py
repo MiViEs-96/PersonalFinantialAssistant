@@ -3,6 +3,7 @@ from auth import auth_bp
 import database_manager
 import os
 import translations
+from mdns_broadcaster import start_mdns_broadcast
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
@@ -104,8 +105,18 @@ def stats():
 if __name__ == '__main__':
     # Verifico le tabelle all'avvio
     from database_manager import init_db
-    init_db() # Per semplicità nel server lo facciamo in automatico,
-              # lo script db_check.py può essere usato manualmente per controllo interattivo.
+    init_db()
+
+    # Avvio il broadcast mDNS per tumitumi.local
+    # In modalità debug=True Flask avvia due processi, quindi controlliamo se è il processo principale
+    import os
+    if os.environ.get('WERKZEUG_RUN_MAIN') == 'true' or not app.debug:
+        zc, info = start_mdns_broadcast("tumitumi", 5000)
 
     # Host 0.0.0.0 makes it accessible on the local network
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    try:
+        app.run(host='0.0.0.0', port=5000, debug=True)
+    finally:
+        if 'zc' in locals():
+            zc.unregister_service(info)
+            zc.close()
