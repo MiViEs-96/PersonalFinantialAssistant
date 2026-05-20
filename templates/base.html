@@ -7,17 +7,29 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-    <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" aria-label="{{ _('change_theme') }}">
-        <span id="theme-icon">🌙</span>
-    </button>
-
     <div class="lang-selector">
         <a href="{{ url_for('set_lang', lang='it') }}" class="lang-btn">IT</a>
         <a href="{{ url_for('set_lang', lang='en') }}" class="lang-btn">EN</a>
         <a href="{{ url_for('set_lang', lang='zh') }}" class="lang-btn">中文</a>
     </div>
 
+    <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" aria-label="{{ _('change_theme') }}">
+        <span id="theme-icon">🌙</span>
+    </button>
+
     {% if session['nickname'] %}
+    <nav class="main-nav">
+        <a href="{{ url_for('dashboard') }}" class="nav-item {% if request.endpoint == 'dashboard' %}active{% endif %}">{{ _('home') }}</a>
+        <a href="{{ url_for('index') }}" class="nav-item {% if request.endpoint in ['index', 'stats'] %}active{% endif %}">{{ _('financial_management') }}</a>
+    </nav>
+
+    {% if request.endpoint in ['index', 'stats'] %}
+    <nav class="sub-nav">
+        <a href="{{ url_for('index') }}" class="nav-item {% if request.endpoint == 'index' %}active{% endif %}">{{ _('home') }}</a>
+        <a href="{{ url_for('stats') }}" class="nav-item {% if request.endpoint == 'stats' %}active{% endif %}">{{ _('stats') }}</a>
+    </nav>
+    {% endif %}
+
     <div class="user-widget">
         <div class="user-info">
             <div>{{ _('welcome') }}, <strong>{{ session['nickname'] }}</strong></div>

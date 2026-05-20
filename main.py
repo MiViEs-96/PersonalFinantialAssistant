@@ -28,29 +28,61 @@ def set_lang(lang):
     return redirect(request.referrer or url_for('index'))
 
 @app.route('/')
+def dashboard():
+    if 'user_id' not in session:
+        return redirect(url_for('auth.login'))
+    return render_template('dashboard.html')
+
+@app.route('/finance')
 def index():
     if 'user_id' not in session:
         return redirect(url_for('auth.login'))
 
     from datetime import date
     nickname = session['nickname']
-    transactions = database_manager.get_transactions_by_user(nickname)
-    return render_template('index.html', transactions=transactions, today=date.today().isoformat())
+
+    # Get monthly stats
+    today = date.today()
+    start_of_month = date(today.year, today.month, 1).isoformat()
+    monthly_data = database_manager.get_stats_data(nickname, start_date=start_of_month)
+
+    monthly_income = sum(t['amount'] for t in monthly_data if t['direction'] == 'entrata')
+    monthly_expense = sum(t['amount'] for t in monthly_data if t['direction'] == 'uscita')
+
+    all_transactions = database_manager.get_transactions_by_user(nickname)
+    latest_transactions = all_transactions[:5] # Last 5
+
+    return render_template('index.html',
+                           transactions=latest_transactions,
+                           today=today.isoformat(),
+                           monthly_income=monthly_income,
+                           monthly_expense=monthly_expense)
 
 @app.route('/add_transaction', methods=['POST'])
 def add_transaction():
     if 'user_id' not in session:
         return redirect(url_for('auth.login'))
 
-    date = request.form.get('date')
-    amount = float(request.form.get('amount'))
-    currency = request.form.get('currency')
-    direction = request.form.get('direction')
-    category = request.form.get('category')
-    comment = request.form.get('comment')
     nickname = session['nickname']
+    dates = request.form.getlist('date[]')
+    amounts = request.form.getlist('amount[]')
+    currencies = request.form.getlist('currency[]')
+    directions = request.form.getlist('direction[]')
+    categories = request.form.getlist('category[]')
+    comments = request.form.getlist('comment[]')
 
-    database_manager.add_transaction(date, amount, currency, direction, category, nickname, comment)
+    for i in range(len(dates)):
+        if dates[i] and amounts[i]:
+            database_manager.add_transaction(
+                dates[i],
+                float(amounts[i]),
+                currencies[i],
+                directions[i],
+                categories[i],
+                nickname,
+                comments[i]
+            )
+
     return redirect(url_for('index'))
 
 @app.route('/stats')

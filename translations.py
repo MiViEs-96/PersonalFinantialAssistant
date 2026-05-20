@@ -39,7 +39,11 @@ TRANSLATIONS = {
         'summary_income_expense': 'Riepilogo Entrate vs Uscite',
         'income_by_category': 'Dettaglio Entrate per Categoria',
         'expense_by_category': 'Dettaglio Uscite per Categoria',
-        'change_theme': 'Cambia Tema'
+        'change_theme': 'Cambia Tema',
+        'financial_management': 'Gestione Finanziaria',
+        'what_do_you_want_to_do': 'Cosa vuoi fare oggi?',
+        'monthly_summary': 'Riepilogo Mensile',
+        'current_month': 'Mese Corrente'
     },
     'en': {
         'welcome': 'Welcome',
@@ -81,7 +85,11 @@ TRANSLATIONS = {
         'summary_income_expense': 'Summary Income vs Expense',
         'income_by_category': 'Income Detail by Category',
         'expense_by_category': 'Expense Detail by Category',
-        'change_theme': 'Change Theme'
+        'change_theme': 'Change Theme',
+        'financial_management': 'Financial Management',
+        'what_do_you_want_to_do': 'What do you want to do today?',
+        'monthly_summary': 'Monthly Summary',
+        'current_month': 'Current Month'
     },
     'zh': {
         'welcome': '欢迎',
@@ -123,6 +131,10 @@ TRANSLATIONS = {
         'summary_income_expense': '收支摘要',
         'income_by_category': '收入分类详情',
         'expense_by_category': '支出分类详情',
-        'change_theme': '更改主题'
+        'change_theme': '更改主题',
+        'financial_management': '财务管理',
+        'what_do_you_want_to_do': '你今天想做什么？',
+        'monthly_summary': '月度总结',
+        'current_month': '本月'
     }
 }

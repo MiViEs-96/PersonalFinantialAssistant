@@ -28,7 +28,55 @@ body {
     align-items: center;
     min-height: 100vh;
     transition: background-color 0.3s, color 0.3s;
-    padding-top: 5rem;
+    padding-top: 7rem;
+}
+
+.main-nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    background-color: var(--card-bg);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+    padding: 1rem 0;
+    z-index: 1500;
+}
+
+.sub-nav {
+    position: fixed;
+    top: 3.5rem;
+    left: 0;
+    width: 100%;
+    background-color: var(--bg-color);
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: center;
+    gap: 1.5rem;
+    padding: 0.5rem 0;
+    z-index: 1400;
+    font-size: 0.9rem;
+}
+
+.nav-item {
+    text-decoration: none;
+    color: var(--text-color);
+    font-weight: 500;
+    padding: 0.25rem 0.75rem;
+    border-radius: 4px;
+    transition: background 0.2s;
+}
+
+.nav-item:hover {
+    background-color: rgba(0,0,0,0.05);
+}
+
+.nav-item.active {
+    color: var(--accent-color);
+    border-bottom: 2px solid var(--accent-color);
+    border-radius: 0;
 }
 
 .container {
@@ -36,8 +84,8 @@ body {
     padding: 2rem;
     border-radius: 12px;
     box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-    width: 90%;
-    max-width: 900px;
+    width: 95%;
+    max-width: 1200px;
     text-align: center;
     margin-bottom: 2rem;
 }
@@ -85,18 +133,30 @@ button:hover {
 
 .theme-toggle {
     position: fixed;
-    top: 1.5rem;
-    left: 1.5rem;
-    z-index: 1000;
+    top: 0.5rem;
+    right: 0.5rem;
+    z-index: 2000;
+    width: 45px;
+    height: 45px;
 }
 
 .lang-selector {
     position: fixed;
-    top: 1.5rem;
-    left: 5rem;
+    top: 0.5rem;
+    right: 4rem;
     display: flex;
     gap: 0.5rem;
-    z-index: 1000;
+    z-index: 2000;
+}
+
+.theme-toggle, .lang-selector {
+    width: auto;
+    height: auto;
+}
+
+.theme-toggle {
+    width: 45px;
+    height: 45px;
 }
 
 .lang-btn {
@@ -168,7 +228,7 @@ th {
 /* User Profile Widget */
 .user-widget {
     position: fixed;
-    top: 1rem;
+    top: 3.5rem;
     right: 1rem;
     background-color: var(--card-bg);
     padding: 0.5rem 1rem;
@@ -177,7 +237,7 @@ th {
     display: flex;
     align-items: center;
     gap: 1rem;
-    z-index: 100;
+    z-index: 1600;
 }
 
 .user-avatar {
@@ -197,6 +257,57 @@ th {
     width: 100%;
     height: 100%;
     object-fit: cover;
+}
+
+.finance-layout {
+    display: flex;
+    gap: 2rem;
+    flex-wrap: wrap;
+    margin-top: 2rem;
+}
+
+.finance-sidebar {
+    flex: 1;
+    min-width: 250px;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.finance-main {
+    flex: 3;
+    min-width: 600px;
+}
+
+.summary-card {
+    background-color: var(--card-bg);
+    padding: 1.5rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    text-align: left;
+    border: 1px solid var(--border-color);
+}
+
+.summary-val {
+    font-size: 1.8rem;
+    font-weight: bold;
+    margin-top: 0.5rem;
+}
+
+.add-row-btn {
+    background: none;
+    border: 1px dashed var(--accent-color);
+    color: var(--accent-color);
+    padding: 0.5rem;
+    border-radius: 8px;
+    cursor: pointer;
+    margin-bottom: 1rem;
+    width: 100%;
+    font-size: 1.2rem;
+}
+
+.add-row-btn:hover {
+    background-color: rgba(0,123,255,0.05);
 }
 
 /* Transaction Table Form */

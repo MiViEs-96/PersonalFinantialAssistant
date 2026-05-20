@@ -3,83 +3,126 @@
 {% block title %}{{ _('home') }}{% endblock %}
 
 {% block content %}
-    <h2>{{ _('transaction_management') }}</h2>
+    <h2>{{ _('financial_management') }}</h2>
 
-    <div class="nav-links">
-        <a href="{{ url_for('index') }}">{{ _('home') }}</a>
-        <a href="{{ url_for('stats') }}">{{ _('stats') }}</a>
+    <div class="finance-layout">
+        <!-- Sidebar with monthly summary -->
+        <div class="finance-sidebar">
+            <div class="summary-card">
+                <div style="font-size: 0.9rem; color: var(--primary-color);">{{ _('monthly_summary') }}</div>
+                <div style="font-size: 0.8rem; margin-bottom: 1rem;">({{ _('current_month') }})</div>
+
+                <div style="color: var(--success-color);">{{ _('incomes') }}</div>
+                <div class="summary-val" style="color: var(--success-color);">+ {{ "%.2f"|format(monthly_income) }} €</div>
+
+                <div style="color: #dc3545; margin-top: 1rem;">{{ _('expenses') }}</div>
+                <div class="summary-val" style="color: #dc3545;">- {{ "%.2f"|format(monthly_expense) }} €</div>
+            </div>
+        </div>
+
+        <!-- Main section with form and table -->
+        <div class="finance-main">
+            <div class="summary-card" style="margin-bottom: 2rem;">
+                <h3>{{ _('add_new_transaction') }}</h3>
+                <form action="{{ url_for('add_transaction') }}" method="POST">
+                    <table class="transaction-form-table" id="transaction-table">
+                        <thead>
+                            <tr>
+                                <th>{{ _('date') }}</th>
+                                <th>{{ _('amount') }}</th>
+                                <th>{{ _('currency') }}</th>
+                                <th>{{ _('type') }}</th>
+                                <th>{{ _('category') }}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="transaction-row">
+                                <td><input type="date" name="date[]" required value="{{ today }}"></td>
+                                <td><input type="number" step="0.01" name="amount[]" placeholder="0.00" required></td>
+                                <td>
+                                    <select name="currency[]">
+                                        <option value="EUR">€ (EUR)</option>
+                                        <option value="USD">$ (USD)</option>
+                                    </select>
+                                </td>
+                                <td>
+                                    <select name="direction[]">
+                                        <option value="uscita">{{ _('expense') }}</option>
+                                        <option value="entrata">{{ _('income') }}</option>
+                                    </select>
+                                </td>
+                                <td><input type="text" name="category[]" placeholder="es. Cibo" required></td>
+                            </tr>
+                            <tr>
+                                <th colspan="5">{{ _('comment') }}</th>
+                            </tr>
+                            <tr>
+                                <td colspan="5"><input type="text" name="comment[]" placeholder="{{ _('add_note') }}"></td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <button type="button" class="add-row-btn" onclick="addRow()">+</button>
+
+                    <div id="comment-section" style="display:none;">
+                        <!-- We use hidden comments for multi-row to keep it simple,
+                             but for the first row or if user wants, they can add one.
+                             Actually, let's keep one comment per row for consistency. -->
+                    </div>
+
+                    <button type="submit" style="width: auto; padding: 0.75rem 2rem;">{{ _('add') }}</button>
+                </form>
+            </div>
+
+            <div class="summary-card">
+                <h3>{{ _('latest_transactions') }} (5)</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>{{ _('date') }}</th>
+                            <th>{{ _('amount') }}</th>
+                            <th>{{ _('type') }}</th>
+                            <th>{{ _('category') }}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for t in transactions %}
+                        <tr style="color: {{ 'var(--success-color)' if t['direction'] == 'entrata' else 'inherit' }}">
+                            <td>{{ t['date'] }}</td>
+                            <td>{{ "%.2f"|format(t['amount']) }} {{ t['currency'] }}</td>
+                            <td>{{ _(t['direction']) }}</td>
+                            <td>{{ t['category'] }}</td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="4">{{ _('no_transactions') }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
 
-    <div style="margin-top: 2rem;">
-        <h3>{{ _('add_new_transaction') }}</h3>
-        <form action="{{ url_for('add_transaction') }}" method="POST">
-            <table class="transaction-form-table">
-                <thead>
-                    <tr>
-                        <th>{{ _('date') }}</th>
-                        <th>{{ _('amount') }}</th>
-                        <th>{{ _('currency') }}</th>
-                        <th>{{ _('type') }}</th>
-                        <th>{{ _('category') }}</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td><input type="date" name="date" required value="{{ today }}"></td>
-                        <td><input type="number" step="0.01" name="amount" placeholder="0.00" required></td>
-                        <td>
-                            <select name="currency">
-                                <option value="EUR">€ (EUR)</option>
-                                <option value="USD">$ (USD)</option>
-                            </select>
-                        </td>
-                        <td>
-                            <select name="direction">
-                                <option value="uscita">{{ _('expense') }}</option>
-                                <option value="entrata">{{ _('income') }}</option>
-                            </select>
-                        </td>
-                        <td><input type="text" name="category" placeholder="es. Cibo" required></td>
-                    </tr>
-                    <tr>
-                        <th colspan="5">{{ _('comment') }}</th>
-                    </tr>
-                    <tr>
-                        <td colspan="5"><input type="text" name="comment" placeholder="{{ _('add_note') }}"></td>
-                    </tr>
-                </tbody>
-            </table>
-            <button type="submit" style="width: auto; padding: 0.75rem 2rem;">{{ _('add') }}</button>
-        </form>
-    </div>
+    <script>
+        function addRow() {
+            const tbody = document.querySelector('#transaction-table tbody');
 
-    <div style="margin-top: 3rem;">
-        <h3>{{ _('latest_transactions') }}</h3>
-        <table>
-            <thead>
-                <tr>
-                    <th>{{ _('date') }}</th>
-                    <th>{{ _('amount') }}</th>
-                    <th>{{ _('type') }}</th>
-                    <th>{{ _('category') }}</th>
-                    <th>{{ _('comment') }}</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for t in transactions %}
-                <tr style="color: {{ 'var(--success-color)' if t['direction'] == 'entrata' else 'inherit' }}">
-                    <td>{{ t['date'] }}</td>
-                    <td>{{ "%.2f"|format(t['amount']) }} {{ t['currency'] }}</td>
-                    <td>{{ _(t['direction']) }}</td>
-                    <td>{{ t['category'] }}</td>
-                    <td>{{ t['comment'] }}</td>
-                </tr>
-                {% else %}
-                <tr>
-                    <td colspan="5">{{ _('no_transactions') }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
+            // Clone first transaction row
+            const newRow = tbody.rows[0].cloneNode(true);
+            const inputs = newRow.querySelectorAll('input');
+            inputs.forEach(input => {
+                if(input.type !== 'date') input.value = '';
+            });
+
+            // Clone comment label and comment row
+            const newCommentLabel = tbody.rows[1].cloneNode(true);
+            const newCommentRow = tbody.rows[2].cloneNode(true);
+            newCommentRow.querySelector('input').value = '';
+
+            tbody.appendChild(newRow);
+            tbody.appendChild(newCommentLabel);
+            tbody.appendChild(newCommentRow);
+        }
+    </script>
 {% endblock %}

@@ -40,7 +40,7 @@ def login():
             session['user_id'] = user['id']
             session['nickname'] = user['nickname']
             database_manager.update_last_access(user['id'])
-            return redirect(url_for('index'))
+            return redirect(url_for('dashboard'))
         else:
             flash('Invalid credentials.')
 
