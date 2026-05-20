@@ -50,6 +50,15 @@
         {% block content %}{% endblock %}
     </main>
 
+    <footer class="mobile-footer">
+        <div style="margin-bottom: 1rem; font-weight: bold;">Language / Lingua / 语言</div>
+        <div style="display: flex; justify-content: center; gap: 1.5rem;">
+            <a href="{{ url_for('set_lang', lang='it') }}" class="nav-item">Italiano</a>
+            <a href="{{ url_for('set_lang', lang='en') }}" class="nav-item">English</a>
+            <a href="{{ url_for('set_lang', lang='zh') }}" class="nav-item">中文</a>
+        </div>
+    </footer>
+
     <script>
         function updateIcon(theme) {
             const icon = document.getElementById('theme-icon');
