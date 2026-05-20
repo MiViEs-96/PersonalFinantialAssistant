@@ -22,6 +22,7 @@ def register():
             return redirect(url_for('auth.login'))
         else:
             flash('Nickname already exists.')
+            return redirect(url_for('auth.register'))
 
     return render_template('register.html')
 

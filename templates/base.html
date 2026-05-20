@@ -10,6 +10,23 @@
     <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" aria-label="Cambia Tema">
         <span id="theme-icon">🌙</span>
     </button>
+
+    {% if session['nickname'] %}
+    <div class="user-widget">
+        <div class="user-info">
+            <div>Benvenuto, <strong>{{ session['nickname'] }}</strong></div>
+            <a href="{{ url_for('auth.logout') }}" class="logout-link">Esci</a>
+        </div>
+        <div class="user-avatar">
+            {% if session['profile_pic'] %}
+                <img src="{{ session['profile_pic'] }}" alt="Profile">
+            {% else %}
+                {{ session['nickname'][0] | upper }}
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
     <div class="container {% block container_class %}{% endblock %}">
         {% with messages = get_flashed_messages() %}
           {% if messages %}

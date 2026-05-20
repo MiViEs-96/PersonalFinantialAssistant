@@ -1,34 +1,85 @@
 {% extends "base.html" %}
 
-{% block title %}Dashboard{% endblock %}
-
-{% block container_class %}dashboard-container{% endblock %}
+{% block title %}Home{% endblock %}
 
 {% block content %}
-    <style>
-        .dashboard-container {
-            max-width: 800px;
-        }
-    </style>
-    <h2>Bentornato, {{ session['nickname'] }}!</h2>
-    <h3>Utenti Registrati</h3>
-    <table>
-        <thead>
-            <tr>
-                <th>Nome Completo</th>
-                <th>Nickname</th>
-                <th>Ultimo Accesso</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for user in users %}
-            <tr>
-                <td>{{ user['full_name'] }}</td>
-                <td>{{ user['nickname'] }}</td>
-                <td>{{ user['last_access'] if user['last_access'] else 'Mai' }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-    <a href="{{ url_for('auth.logout') }}" class="logout-link">Esci</a>
+    <h2>Gestione Transazioni</h2>
+
+    <div class="nav-links">
+        <a href="{{ url_for('index') }}">Home</a>
+        <a href="{{ url_for('stats') }}">Statistiche</a>
+    </div>
+
+    <div style="margin-top: 2rem;">
+        <h3>Aggiungi Nuova Transazione</h3>
+        <form action="{{ url_for('add_transaction') }}" method="POST">
+            <table class="transaction-form-table">
+                <thead>
+                    <tr>
+                        <th>Data</th>
+                        <th>Importo</th>
+                        <th>Valuta</th>
+                        <th>Tipo</th>
+                        <th>Categoria</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><input type="date" name="date" required value="{{ today }}"></td>
+                        <td><input type="number" step="0.01" name="amount" placeholder="0.00" required></td>
+                        <td>
+                            <select name="currency">
+                                <option value="EUR">€ (EUR)</option>
+                                <option value="USD">$ (USD)</option>
+                            </select>
+                        </td>
+                        <td>
+                            <select name="direction">
+                                <option value="uscita">Uscita</option>
+                                <option value="entrata">Entrata</option>
+                            </select>
+                        </td>
+                        <td><input type="text" name="category" placeholder="es. Cibo" required></td>
+                    </tr>
+                    <tr>
+                        <th colspan="5">Commento (Opzionale)</th>
+                    </tr>
+                    <tr>
+                        <td colspan="5"><input type="text" name="comment" placeholder="Aggiungi una nota..."></td>
+                    </tr>
+                </tbody>
+            </table>
+            <button type="submit" style="width: auto; padding: 0.75rem 2rem;">Aggiungi</button>
+        </form>
+    </div>
+
+    <div style="margin-top: 3rem;">
+        <h3>Ultime Transazioni</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Data</th>
+                    <th>Importo</th>
+                    <th>Tipo</th>
+                    <th>Categoria</th>
+                    <th>Commento</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for t in transactions %}
+                <tr style="color: {{ 'var(--success-color)' if t['direction'] == 'entrata' else 'inherit' }}">
+                    <td>{{ t['date'] }}</td>
+                    <td>{{ "%.2f"|format(t['amount']) }} {{ t['currency'] }}</td>
+                    <td>{{ t['direction'] | capitalize }}</td>
+                    <td>{{ t['category'] }}</td>
+                    <td>{{ t['comment'] }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="5">Nessuna transazione trovata.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 {% endblock %}
