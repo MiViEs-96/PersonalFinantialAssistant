@@ -3,15 +3,20 @@
 {% block title %}{{ _('stats') }}{% endblock %}
 
 {% block content %}
-    <h2>{{ _('analysis') }}</h2>
-
-    <div class="nav-links">
-        <a href="{{ url_for('index') }}">{{ _('home') }}</a>
-        <a href="{{ url_for('stats') }}">{{ _('stats') }}</a>
+    <div class="welcome-widget">
+        <div style="text-align: right;">
+            <div>{{ _('welcome') }}, <strong>{{ session['nickname'] }}</strong></div>
+            <a href="{{ url_for('auth.logout') }}" class="logout-link">{{ _('logout') }}</a>
+        </div>
+        <div class="user-avatar">
+            {{ session['nickname'][0] | upper }}
+        </div>
     </div>
 
-    <div style="margin-top: 2rem;">
-        <form method="GET" style="display: flex; gap: 1rem; justify-content: center; align-items: flex-end; flex-wrap: wrap;">
+    <div class="content-card">
+        <h2>{{ _('analysis') }}</h2>
+
+        <form method="GET" style="display: flex; gap: 1rem; justify-content: center; align-items: flex-end; flex-wrap: wrap; margin-bottom: 2rem;">
             <div class="form-group" style="margin-bottom: 0;">
                 <label for="start_date">{{ _('from') }}:</label>
                 <input type="date" name="start_date" id="start_date" value="{{ start_date }}">
@@ -20,25 +25,25 @@
                 <label for="end_date">{{ _('to') }}:</label>
                 <input type="date" name="end_date" id="end_date" value="{{ end_date }}">
             </div>
-            <button type="submit" style="width: auto; margin-top: 0; padding: 0.6rem 1.5rem;">{{ _('filter') }}</button>
+            <button type="submit" style="padding: 0.6rem 1.5rem;">{{ _('filter') }}</button>
         </form>
-    </div>
 
-    <div style="margin-top: 3rem; display: flex; flex-direction: column; gap: 3rem; align-items: center;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 3rem; align-items: start;">
 
-        <div style="width: 100%; max-width: 400px;">
-            <h3>{{ _('summary_income_expense') }}</h3>
-            <canvas id="pieChart"></canvas>
-        </div>
+            <div style="text-align: center;">
+                <h3>{{ _('summary_income_expense') }}</h3>
+                <canvas id="pieChart"></canvas>
+            </div>
 
-        <div style="width: 100%; max-width: 600px;">
-            <h3>{{ _('income_by_category') }}</h3>
-            <canvas id="incomeBarChart"></canvas>
-        </div>
+            <div style="text-align: center;">
+                <h3>{{ _('income_by_category') }}</h3>
+                <canvas id="incomeBarChart"></canvas>
+            </div>
 
-        <div style="width: 100%; max-width: 600px;">
-            <h3>{{ _('expense_by_category') }}</h3>
-            <canvas id="expenseBarChart"></canvas>
+            <div style="text-align: center;">
+                <h3>{{ _('expense_by_category') }}</h3>
+                <canvas id="expenseBarChart"></canvas>
+            </div>
         </div>
     </div>
 
@@ -46,7 +51,6 @@
     <script>
         const chartData = {{ chart_data | tojson }};
 
-        // Pie Chart
         new Chart(document.getElementById('pieChart'), {
             type: 'pie',
             data: {
@@ -58,7 +62,6 @@
             }
         });
 
-        // Income Bar Chart
         new Chart(document.getElementById('incomeBarChart'), {
             type: 'bar',
             data: {
@@ -69,12 +72,9 @@
                     backgroundColor: '#28a745'
                 }]
             },
-            options: {
-                scales: { y: { beginAtZero: true } }
-            }
+            options: { scales: { y: { beginAtZero: true } } }
         });
 
-        // Expense Bar Chart
         new Chart(document.getElementById('expenseBarChart'), {
             type: 'bar',
             data: {
@@ -85,9 +85,7 @@
                     backgroundColor: '#dc3545'
                 }]
             },
-            options: {
-                scales: { y: { beginAtZero: true } }
-            }
+            options: { scales: { y: { beginAtZero: true } } }
         });
     </script>
 {% endblock %}

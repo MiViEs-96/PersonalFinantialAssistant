@@ -3,18 +3,27 @@
 {% block title %}Dashboard{% endblock %}
 
 {% block content %}
-    <div style="padding: 2rem;">
+    <div class="welcome-widget">
+        <div style="text-align: right;">
+            <div>{{ _('welcome') }}, <strong>{{ session['nickname'] }}</strong></div>
+            <a href="{{ url_for('auth.logout') }}" class="logout-link">{{ _('logout') }}</a>
+        </div>
+        <div class="user-avatar">
+            {{ session['nickname'][0] | upper }}
+        </div>
+    </div>
+
+    <div class="content-card" style="text-align: center; padding: 4rem 2rem;">
         <h2>{{ _('welcome') }}, {{ session['nickname'] }}!</h2>
         <p style="font-size: 1.2rem; color: var(--primary-color);">{{ _('what_do_you_want_to_do') }}</p>
 
-        <div style="margin-top: 3rem; display: flex; justify-content: center; gap: 2rem;">
-            <a href="{{ url_for('index') }}" class="nav-item" style="padding: 2rem; border: 1px solid var(--border-color); border-radius: 12px; background: var(--card-bg); box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 250px; text-align: center;">
+        <div style="margin-top: 3rem; display: flex; justify-content: center; gap: 2rem; flex-wrap: wrap;">
+            <a href="{{ url_for('index') }}" class="nav-item" style="padding: 2rem; border: 1px solid var(--border-color); border-radius: 12px; background: var(--bg-color); width: 250px; text-align: center; transition: transform 0.2s;">
                 <div style="font-size: 3rem; margin-bottom: 1rem;">💰</div>
                 <div style="font-size: 1.2rem; font-weight: bold; color: var(--accent-color);">{{ _('financial_management') }}</div>
             </a>
 
-            <!-- Future modules can be added here -->
-            <div style="padding: 2rem; border: 1px solid var(--border-color); border-radius: 12px; background: var(--card-bg); opacity: 0.5; width: 250px; text-align: center;">
+            <div style="padding: 2rem; border: 1px solid var(--border-color); border-radius: 12px; background: var(--bg-color); opacity: 0.5; width: 250px; text-align: center;">
                 <div style="font-size: 3rem; margin-bottom: 1rem;">🔒</div>
                 <div style="font-size: 1.2rem; font-weight: bold;">Coming Soon</div>
             </div>
