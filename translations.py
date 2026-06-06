@@ -65,7 +65,20 @@ TRANSLATIONS = {
         'sales': 'Vendite',
         'gift': 'Regalo',
         'groceries': 'Spesa',
-        'clothes': 'Abbigliamento'
+        'clothes': 'Abbigliamento',
+        'taxes': 'Tasse',
+        'entrata': 'Entrata',
+        'uscita': 'Uscita',
+        'transport': 'Trasporti',
+        'salary': 'Stipendio',
+        'entertainment': 'Intrattenimento',
+        'rent': 'Affitto',
+        'utilities': 'Utenze',
+        'bonus': 'Bonus',
+        'registered_users': 'Utenti Iscritti',
+        'last_access': 'Ultimo Accesso',
+        'never': 'Mai',
+        'back_to_dashboard': 'Torna alla Dashboard'
     },
     'en': {
         'welcome': 'Welcome',
@@ -133,7 +146,20 @@ TRANSLATIONS = {
         'sales': 'Sales',
         'gift': 'Gift',
         'groceries': 'Groceries',
-        'clothes': 'Clothes'
+        'clothes': 'Clothes',
+        'taxes': 'Taxes',
+        'entrata': 'Income',
+        'uscita': 'Expense',
+        'transport': 'Transport',
+        'salary': 'Salary',
+        'entertainment': 'Entertainment',
+        'rent': 'Rent',
+        'utilities': 'Utilities',
+        'bonus': 'Bonus',
+        'registered_users': 'Registered Users',
+        'last_access': 'Last Access',
+        'never': 'Never',
+        'back_to_dashboard': 'Back to Dashboard'
     },
     'zh': {
         'welcome': '欢迎',
@@ -201,6 +227,19 @@ TRANSLATIONS = {
         'sales': '销售',
         'gift': '礼物',
         'groceries': '杂货',
-        'clothes': '衣服'
+        'clothes': '衣服',
+        'taxes': '税收',
+        'entrata': '收入',
+        'uscita': '支出',
+        'transport': '交通',
+        'salary': '薪水',
+        'entertainment': '娱乐',
+        'rent': '租金',
+        'utilities': '水电费',
+        'bonus': '奖金',
+        'registered_users': '已注册用户',
+        'last_access': '最后访问时间',
+        'never': '从不',
+        'back_to_dashboard': '返回仪表板'
     }
 }

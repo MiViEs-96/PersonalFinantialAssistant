@@ -1,1 +1,13 @@
-{"income": ["Payment", "Sales", "Gift"], "expense": ["Groceries", "Clothes"]}
+{
+    "income": [
+        "Payment",
+        "Sales",
+        "Gift"
+    ],
+    "expense": [
+        "Groceries",
+        "Clothes",
+        "Taxes",
+        "Testcat4235"
+    ]
+}

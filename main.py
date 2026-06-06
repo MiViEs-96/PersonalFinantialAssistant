@@ -89,7 +89,12 @@ def index():
         all_cats = json.load(f)
         for cat_list in all_cats.values():
             for c in cat_list:
-                cat_translations[c] = lang_dict.get(c.lower(), c)
+                # Key check: first check if lowercase exists in translations
+                translated = lang_dict.get(c.lower())
+                if translated:
+                    cat_translations[c] = translated
+                else:
+                    cat_translations[c] = c
 
     return render_template('index.html',
                            transactions=latest_transactions,
@@ -179,7 +184,10 @@ def history():
 
     # Category translations for display
     lang_dict = translations.TRANSLATIONS.get(g.lang, translations.TRANSLATIONS['it'])
-    cat_translations = {c: lang_dict.get(c.lower(), c) for c in all_cats}
+    cat_translations = {}
+    for c in all_cats:
+        translated = lang_dict.get(c.lower())
+        cat_translations[c] = translated if translated else c
 
     return render_template('history.html',
                            transactions=transactions,
@@ -195,6 +203,14 @@ def history():
                                'direction': direction,
                                'category': category
                            })
+
+@app.route('/users')
+def users_list():
+    if 'user_id' not in session:
+        return redirect(url_for('auth.login'))
+
+    users = database_manager.get_all_users()
+    return render_template('users.html', users=users)
 
 @app.route('/download_csv')
 def download_csv():
@@ -224,7 +240,7 @@ def add_category():
         return jsonify({"error": "Unauthorized"}), 401
 
     data = request.get_json()
-    new_name_raw = data.get('name', '').strip()
+    new_name_raw = data.get('name', '').strip().capitalize()
     category_type = data.get('type', 'expense').lower()
     force = data.get('force', False)
 
@@ -245,11 +261,10 @@ def add_category():
     for lang in translations.TRANSLATIONS:
         for key, val in translations.TRANSLATIONS[lang].items():
             if val.lower() == new_name_raw.lower():
-                # We found a match, use the key (which is our English/DB name)
-                # But only if it's one of our core categories or keys
-                # We need to be careful not to map "Enter" to "enter" as a category.
-                # Only map if it's in our initial set or common.
-                if key in ['payment', 'sales', 'gift', 'groceries', 'clothes']:
+                # We want to map to the key if it's a known financial term
+                # Check against all our defined categories and common words
+                possible_keys = ['payment', 'sales', 'gift', 'groceries', 'clothes', 'taxes', 'transport', 'salary', 'entertainment', 'rent', 'utilities', 'bonus']
+                if key in possible_keys:
                     eng_name = key.capitalize()
                     found_in_translations = True
                     break

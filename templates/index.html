@@ -118,7 +118,7 @@
                             <tr style="color: {{ 'var(--success-color)' if t['direction'] == 'entrata' else 'inherit' }}">
                                 <td>{{ t['date'] }}</td>
                                 <td>{{ "%.2f"|format(t['amount']) }} {{ t['currency'] }}</td>
-                                <td>{{ _(t['direction']) }}</td>
+                                <td>{{ _(t['direction']) or _('expense') if t['direction'] == 'uscita' else _('income') }}</td>
                                 <td>{{ cat_translations.get(t['category'], t['category']) }}</td>
                             </tr>
                             {% else %}
