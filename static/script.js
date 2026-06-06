@@ -94,6 +94,7 @@ function openModal(selectElement) {
     document.getElementById('modal-type').value = direction === 'entrata' ? 'income' : 'expense';
     document.getElementById('modal-name').value = '';
     document.getElementById('modal-error').style.display = 'none';
+    document.getElementById('translation-fields').style.display = 'none';
     document.getElementById('categoryModal').style.display = 'flex';
     document.getElementById('modal-confirm-btn').textContent = typeof TXT_ADD !== 'undefined' ? TXT_ADD : 'Aggiungi';
     forceSubmit = false;
@@ -106,6 +107,28 @@ function closeModal() {
     }
 }
 
+async function autoTranslate() {
+    const name = document.getElementById('modal-name').value.trim();
+    if (!name || name.length < 2) return;
+
+    try {
+        const response = await fetch('/api/translate_category', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name })
+        });
+        const result = await response.json();
+        if (response.ok) {
+            document.getElementById('trans-it').value = result.it;
+            document.getElementById('trans-en').value = result.en;
+            document.getElementById('trans-zh').value = result.zh;
+            document.getElementById('translation-fields').style.display = 'block';
+        }
+    } catch (e) {
+        console.error("Auto-translate failed", e);
+    }
+}
+
 async function submitCategory() {
     const name = document.getElementById('modal-name').value.trim();
     const type = document.getElementById('modal-type').value;
@@ -114,11 +137,17 @@ async function submitCategory() {
 
     if (!name) return;
 
+    const trans = {
+        it: document.getElementById('trans-it').value.trim(),
+        en: document.getElementById('trans-en').value.trim(),
+        zh: document.getElementById('trans-zh').value.trim()
+    };
+
     try {
         const response = await fetch('/api/add_category', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, type, force: forceSubmit })
+            body: JSON.stringify({ name, type, force: forceSubmit, translations: trans })
         });
 
         const result = await response.json();

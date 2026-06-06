@@ -78,7 +78,16 @@ TRANSLATIONS = {
         'registered_users': 'Utenti Iscritti',
         'last_access': 'Ultimo Accesso',
         'never': 'Mai',
-        'back_to_dashboard': 'Torna alla Dashboard'
+        'back_to_dashboard': 'Torna alla Dashboard',
+        'automatic_translations': 'Traduzioni Automatiche (modificabili)',
+        'registered_users': 'Utenti Iscritti',
+        'profile_management': 'Gestione Profilo',
+        'save_changes': 'Salva Modifiche',
+        'more_info': 'Più Info',
+        'category_management': 'Gestione Categorie',
+        'show': 'Mostra',
+        'usage': 'Utilizzo',
+        'cannot_delete_used_category': 'Non puoi eliminare una categoria usata.'
     },
     'en': {
         'welcome': 'Welcome',
@@ -159,7 +168,16 @@ TRANSLATIONS = {
         'registered_users': 'Registered Users',
         'last_access': 'Last Access',
         'never': 'Never',
-        'back_to_dashboard': 'Back to Dashboard'
+        'back_to_dashboard': 'Back to Dashboard',
+        'automatic_translations': 'Automatic Translations (editable)',
+        'registered_users': 'Registered Users',
+        'profile_management': 'Profile Management',
+        'save_changes': 'Save Changes',
+        'more_info': 'More Info',
+        'category_management': 'Category Management',
+        'show': 'Show',
+        'usage': 'Usage',
+        'cannot_delete_used_category': 'Cannot delete a used category.'
     },
     'zh': {
         'welcome': '欢迎',
@@ -240,6 +258,15 @@ TRANSLATIONS = {
         'registered_users': '已注册用户',
         'last_access': '最后访问时间',
         'never': '从不',
-        'back_to_dashboard': '返回仪表板'
+        'back_to_dashboard': '返回仪表板',
+        'automatic_translations': '自动翻译 (可编辑)',
+        'registered_users': '已注册用户',
+        'profile_management': '个人资料管理',
+        'save_changes': '保存更改',
+        'more_info': '更多信息',
+        'category_management': '类别管理',
+        'show': '显示',
+        'usage': '用法',
+        'cannot_delete_used_category': '无法删除已使用的类别。'
     }
 }

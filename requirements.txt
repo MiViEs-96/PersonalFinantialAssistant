@@ -1,3 +1,4 @@
 Flask==3.0.3
 Werkzeug==3.0.3
 zeroconf==0.132.2
+googletrans==4.0.0rc1

@@ -7,8 +7,10 @@ import json
 import difflib
 import csv
 import io
+import threading
 from flask import jsonify, make_response
 from mdns_broadcaster import start_mdns_broadcast
+from googletrans import Translator
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
@@ -24,6 +26,17 @@ def before_request():
 def inject_translations():
     lang = g.lang
     def translate(key):
+        # 1. Check in custom_translations.json
+        if os.path.exists('custom_translations.json'):
+            try:
+                with open('custom_translations.json', 'r') as f:
+                    custom = json.load(f)
+                    if key in custom and lang in custom[key]:
+                        return custom[key][lang]
+            except:
+                pass
+
+        # 2. Check in standard translations
         return translations.TRANSLATIONS.get(lang, translations.TRANSLATIONS['it']).get(key, key)
     return dict(_=translate)
 
@@ -85,11 +98,23 @@ def index():
     # Build category translations map for JS
     cat_translations = {}
     lang_dict = translations.TRANSLATIONS.get(g.lang, translations.TRANSLATIONS['it'])
+
+    # Load custom translations
+    custom_cats_trans = {}
+    if os.path.exists('custom_translations.json'):
+        with open('custom_translations.json', 'r') as f:
+            custom_cats_trans = json.load(f)
+
     with open('categories.json', 'r') as f:
         all_cats = json.load(f)
         for cat_list in all_cats.values():
             for c in cat_list:
-                # Key check: first check if lowercase exists in translations
+                # 1. Custom translations first
+                if c in custom_cats_trans and g.lang in custom_cats_trans[c]:
+                    cat_translations[c] = custom_cats_trans[c][g.lang]
+                    continue
+
+                # 2. Standard translations
                 translated = lang_dict.get(c.lower())
                 if translated:
                     cat_translations[c] = translated
@@ -156,6 +181,28 @@ def get_categories():
     with open('categories.json', 'r') as f:
         return jsonify(json.load(f))
 
+@app.route('/api/translate_category', methods=['POST'])
+def translate_category_api():
+    data = request.get_json()
+    name = data.get('name')
+    if not name:
+        return jsonify({"error": "No name"}), 400
+
+    translator = Translator()
+    try:
+        # Detect source lang or assume current
+        trans_it = translator.translate(name, dest='it').text
+        trans_en = translator.translate(name, dest='en').text
+        trans_zh = translator.translate(name, dest='zh-cn').text
+
+        return jsonify({
+            "it": trans_it,
+            "en": trans_en,
+            "zh": trans_zh
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 @app.route('/history')
 def history():
     if 'user_id' not in session:
@@ -184,10 +231,22 @@ def history():
 
     # Category translations for display
     lang_dict = translations.TRANSLATIONS.get(g.lang, translations.TRANSLATIONS['it'])
+
+    custom_trans = {}
+    if os.path.exists('custom_translations.json'):
+        with open('custom_translations.json', 'r') as f:
+            try: custom_trans = json.load(f)
+            except: pass
+
     cat_translations = {}
     for c in all_cats:
-        translated = lang_dict.get(c.lower())
-        cat_translations[c] = translated if translated else c
+        # 1. Custom
+        if c in custom_trans and g.lang in custom_trans[c]:
+            cat_translations[c] = custom_trans[c][g.lang]
+        else:
+            # 2. Standard
+            translated = lang_dict.get(c.lower())
+            cat_translations[c] = translated if translated else c
 
     return render_template('history.html',
                            transactions=transactions,
@@ -204,13 +263,106 @@ def history():
                                'category': category
                            })
 
-@app.route('/users')
-def users_list():
+@app.route('/more_info')
+def more_info():
     if 'user_id' not in session:
         return redirect(url_for('auth.login'))
 
     users = database_manager.get_all_users()
-    return render_template('users.html', users=users)
+
+    # Get category usage
+    usage_counts = database_manager.get_category_usage_counts()
+
+    with open('categories.json', 'r') as f:
+        categories_data = json.load(f)
+
+    # Load custom translations for display
+    custom_trans = {}
+    if os.path.exists('custom_translations.json'):
+        with open('custom_translations.json', 'r') as f:
+            try: custom_trans = json.load(f)
+            except: pass
+
+    # Prepare detailed category info
+    cat_details = {"income": [], "expense": []}
+    for ctype in ["income", "expense"]:
+        for cat in categories_data[ctype]:
+            db_dir = 'entrata' if ctype == 'income' else 'uscita'
+            count = usage_counts.get((cat, db_dir), 0)
+
+            # Translate
+            display_name = cat
+            if cat in custom_trans and g.lang in custom_trans[cat]:
+                display_name = custom_trans[cat][g.lang]
+            else:
+                display_name = translations.TRANSLATIONS[g.lang].get(cat.lower(), cat)
+
+            cat_details[ctype].append({
+                "name": cat,
+                "display": display_name,
+                "count": count
+            })
+
+    return render_template('more_info.html',
+                           users=users,
+                           cat_details=cat_details)
+
+@app.route('/update_profile', methods=['POST'])
+def update_profile():
+    if 'user_id' not in session:
+        return redirect(url_for('auth.login'))
+
+    user_id = session['user_id']
+    old_nickname = session['nickname']
+    new_full_name = request.form.get('full_name')
+    new_nickname = request.form.get('nickname')
+
+    if database_manager.update_user_profile(user_id, old_nickname, new_full_name, new_nickname):
+        session['nickname'] = new_nickname
+        return redirect(url_for('more_info'))
+    else:
+        # Handle error (e.g. nickname taken)
+        return "Errore: Nickname già in uso", 400
+
+@app.route('/api/delete_category', methods=['POST'])
+def delete_category():
+    if 'user_id' not in session:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    data = request.get_json()
+    cat_name = data.get('name')
+    cat_type = data.get('type') # 'income' or 'expense'
+
+    if not cat_name or not cat_type:
+        return jsonify({"error": "Missing data"}), 400
+
+    # Safety check: count transactions again
+    usage_counts = database_manager.get_category_usage_counts()
+    db_dir = 'entrata' if cat_type == 'income' else 'uscita'
+    if usage_counts.get((cat_name, db_dir), 0) > 0:
+        return jsonify({"error": "Category in use"}), 400
+
+    # Delete from categories.json
+    with open('categories.json', 'r') as f:
+        categories = json.load(f)
+
+    if cat_name in categories[cat_type]:
+        categories[cat_type].remove(cat_name)
+        with open('categories.json', 'w') as f:
+            json.dump(categories, f, indent=4)
+
+        # Optional: delete from custom_translations.json too?
+        if os.path.exists('custom_translations.json'):
+            with open('custom_translations.json', 'r') as f:
+                custom = json.load(f)
+            if cat_name in custom:
+                del custom[cat_name]
+                with open('custom_translations.json', 'w') as f:
+                    json.dump(custom, f, indent=4)
+
+        return jsonify({"success": True})
+
+    return jsonify({"error": "Category not found"}), 404
 
 @app.route('/download_csv')
 def download_csv():
@@ -243,6 +395,7 @@ def add_category():
     new_name_raw = data.get('name', '').strip().capitalize()
     category_type = data.get('type', 'expense').lower()
     force = data.get('force', False)
+    manual_trans = data.get('translations') # {it, en, zh}
 
     if not new_name_raw:
         return jsonify({"error": "Empty name"}), 400
@@ -261,8 +414,6 @@ def add_category():
     for lang in translations.TRANSLATIONS:
         for key, val in translations.TRANSLATIONS[lang].items():
             if val.lower() == new_name_raw.lower():
-                # We want to map to the key if it's a known financial term
-                # Check against all our defined categories and common words
                 possible_keys = ['payment', 'sales', 'gift', 'groceries', 'clothes', 'taxes', 'transport', 'salary', 'entertainment', 'rent', 'utilities', 'bonus']
                 if key in possible_keys:
                     eng_name = key.capitalize()
@@ -277,9 +428,8 @@ def add_category():
             "message": translations.TRANSLATIONS[g.lang]['category_exists'].format(name=eng_name)
         }), 409
 
-    # 3. Misspelling check (against localized names in current language)
+    # 3. Misspelling check
     current_lang_categories = []
-    # Map current English categories to current language names for comparison
     for c in target_list:
         loc_val = translations.TRANSLATIONS[g.lang].get(c.lower(), c)
         current_lang_categories.append(loc_val)
@@ -293,11 +443,29 @@ def add_category():
                 "message": translations.TRANSLATIONS[g.lang]['did_you_mean'].format(suggestion=matches[0])
             }), 400
 
-    # 4. Add and Save
+    # 4. Add and Save Category
     target_list.append(eng_name)
     categories[category_type] = target_list
     with open('categories.json', 'w') as f:
         json.dump(categories, f, indent=4)
+
+    # 5. Save Custom Translations
+    if manual_trans:
+        custom_trans = {}
+        if os.path.exists('custom_translations.json'):
+            with open('custom_translations.json', 'r') as f:
+                try:
+                    custom_trans = json.load(f)
+                except: pass
+
+        custom_trans[eng_name] = {
+            "it": manual_trans.get("it", eng_name),
+            "en": manual_trans.get("en", eng_name),
+            "zh": manual_trans.get("zh", eng_name)
+        }
+
+        with open('custom_translations.json', 'w') as f:
+            json.dump(custom_trans, f, indent=4)
 
     return jsonify({"success": True, "name": eng_name, "type": category_type})
 

@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+
+{% block title %}{{ _('more_info') }}{% endblock %}
+
+{% block content %}
+    <div class="finance-layout" style="grid-template-columns: 1fr 1fr;">
+        <!-- Column 1: User Management & Profile -->
+        <div class="col">
+            <div class="content-card">
+                <h3>{{ _('registered_users') }}</h3>
+                <div style="overflow-x: auto; max-height: 300px;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>{{ _('full_name') }}</th>
+                                <th>{{ _('nickname') }}</th>
+                                <th>{{ _('last_access') }}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for u in users %}
+                            <tr>
+                                <td>{{ u['full_name'] }}</td>
+                                <td>{{ u['nickname'] }}</td>
+                                <td><small>{{ u['last_access'] if u['last_access'] else _('never') }}</small></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="content-card">
+                <h3>{{ _('profile_management') }}</h3>
+                {% set current_user = users | selectattr('nickname', 'equalto', session['nickname']) | first %}
+                <form action="{{ url_for('update_profile') }}" method="POST">
+                    <div class="form-group">
+                        <label>{{ _('full_name') }}</label>
+                        <input type="text" name="full_name" value="{{ current_user['full_name'] }}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>{{ _('nickname') }}</label>
+                        <input type="text" name="nickname" value="{{ current_user['nickname'] }}" required>
+                    </div>
+                    <button type="submit">{{ _('save_changes') }}</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Column 2: Category Management -->
+        <div class="col">
+            <div class="content-card">
+                <h3>{{ _('category_management') }}</h3>
+                <div style="display: flex; gap: 1rem; margin-bottom: 1.5rem;">
+                    <button type="button" onclick="showCats('expense')" id="btn-exp" class="btn-secondary">{{ _('expenses') }}</button>
+                    <button type="button" onclick="showCats('income')" id="btn-inc" class="btn-secondary" style="opacity: 0.6;">{{ _('incomes') }}</button>
+                </div>
+
+                <div id="cats-expense" class="cat-list">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>{{ _('category') }}</th>
+                                <th>{{ _('usage') }}</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for cat in cat_details['expense'] %}
+                            <tr id="row-expense-{{ cat.name }}">
+                                <td>{{ cat.display }} <small style="color: var(--primary-color)">({{ cat.name }})</small></td>
+                                <td>{{ cat.count }}</td>
+                                <td style="text-align: right;">
+                                    {% if cat.count == 0 %}
+                                    <button class="delete-btn" onclick="deleteCat('{{ cat.name }}', 'expense')">✕</button>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div id="cats-income" class="cat-list" style="display: none;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>{{ _('category') }}</th>
+                                <th>{{ _('usage') }}</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for cat in cat_details['income'] %}
+                            <tr id="row-income-{{ cat.name }}">
+                                <td>{{ cat.display }} <small style="color: var(--primary-color)">({{ cat.name }})</small></td>
+                                <td>{{ cat.count }}</td>
+                                <td style="text-align: right;">
+                                    {% if cat.count == 0 %}
+                                    <button class="delete-btn" onclick="deleteCat('{{ cat.name }}', 'income')">✕</button>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .delete-btn {
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            padding: 2px 8px;
+            font-size: 0.8rem;
+        }
+        .delete-btn:hover {
+            background: #a71d2a;
+        }
+    </style>
+
+    <script>
+        function showCats(type) {
+            document.getElementById('cats-expense').style.display = type === 'expense' ? 'block' : 'none';
+            document.getElementById('cats-income').style.display = type === 'income' ? 'block' : 'none';
+            document.getElementById('btn-exp').style.opacity = type === 'expense' ? '1' : '0.6';
+            document.getElementById('btn-inc').style.opacity = type === 'income' ? '1' : '0.6';
+        }
+
+        async function deleteCat(name, type) {
+            if (!confirm("{{ _('confirm_anyway') }}?")) return;
+
+            try {
+                const res = await fetch('/api/delete_category', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, type })
+                });
+                if (res.ok) {
+                    document.getElementById(`row-${type}-${name}`).remove();
+                } else {
+                    const err = await res.json();
+                    alert(err.error);
+                }
+            } catch (e) {
+                alert("Error connecting to server");
+            }
+        }
+    </script>
+{% endblock %}

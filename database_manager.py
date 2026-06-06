@@ -76,6 +76,25 @@ def get_all_users():
     conn.close()
     return users
 
+def update_user_profile(user_id, old_nickname, new_full_name, new_nickname):
+    conn = get_db_connection()
+    try:
+        # 1. Update user record
+        conn.execute('UPDATE users SET full_name = ?, nickname = ? WHERE id = ?',
+                     (new_full_name, new_nickname, user_id))
+
+        # 2. Update all transactions if nickname changed
+        if old_nickname != new_nickname:
+            conn.execute('UPDATE transactions SET nickname = ? WHERE nickname = ?',
+                         (new_nickname, old_nickname))
+
+        conn.commit()
+        return True
+    except sqlite3.IntegrityError:
+        return False
+    finally:
+        conn.close()
+
 # --- Transaction Management ---
 
 def add_transaction(date, amount, currency, direction, category, nickname, comment):
@@ -140,6 +159,21 @@ def get_paginated_transactions(nickname, page=1, per_page=10, start_date=None, e
 
     conn.close()
     return transactions, total_count
+
+def get_category_usage_counts():
+    conn = get_db_connection()
+    counts = conn.execute('''
+        SELECT category, direction, COUNT(*) as count
+        FROM transactions
+        GROUP BY category, direction
+    ''').fetchall()
+    conn.close()
+
+    # Format as a dict: {(category, direction): count}
+    result = {}
+    for row in counts:
+        result[(row['category'], row['direction'])] = row['count']
+    return result
 
 if __name__ == '__main__':
     init_db()
