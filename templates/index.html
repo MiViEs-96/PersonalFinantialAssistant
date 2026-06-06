@@ -147,22 +147,22 @@
                 </select>
             </div>
             <div class="form-group">
-                <label>{{ _('new_category_name') }}</label>
-                <input type="text" id="modal-name" placeholder="es. Cibo" onblur="autoTranslate()">
+                <label id="modal-primary-label">{{ _('new_category_name') }}</label>
+                <input type="text" id="modal-name" placeholder="..." onblur="autoTranslate()" style="background: white;">
             </div>
             <div id="translation-fields" style="display: none; border: 1px solid var(--border-color); padding: 1rem; border-radius: 8px; margin-bottom: 1rem; background: var(--bg-color);">
                 <div style="font-size: 0.8rem; margin-bottom: 0.5rem; color: var(--primary-color);">{{ _('automatic_translations') }}</div>
-                <div class="form-group" style="margin-bottom: 0.5rem;">
+                <div id="trans-group-it" class="form-group" style="margin-bottom: 0.5rem;">
                     <label style="font-size: 0.7rem;">IT</label>
-                    <input type="text" id="trans-it" style="padding: 0.4rem; font-size: 0.9rem;">
+                    <input type="text" id="trans-it" style="padding: 0.4rem; font-size: 0.9rem; background: #e9ecef;">
                 </div>
-                <div class="form-group" style="margin-bottom: 0.5rem;">
+                <div id="trans-group-en" class="form-group" style="margin-bottom: 0.5rem;">
                     <label style="font-size: 0.7rem;">EN</label>
-                    <input type="text" id="trans-en" style="padding: 0.4rem; font-size: 0.9rem;">
+                    <input type="text" id="trans-en" style="padding: 0.4rem; font-size: 0.9rem; background: #e9ecef;">
                 </div>
-                <div class="form-group" style="margin-bottom: 0.5rem;">
+                <div id="trans-group-zh" class="form-group" style="margin-bottom: 0.5rem;">
                     <label style="font-size: 0.7rem;">中文</label>
-                    <input type="text" id="trans-zh" style="padding: 0.4rem; font-size: 0.9rem;">
+                    <input type="text" id="trans-zh" style="padding: 0.4rem; font-size: 0.9rem; background: #e9ecef;">
                 </div>
             </div>
             <div id="modal-error" class="error-msg" style="display: none;"></div>
@@ -178,6 +178,7 @@
         const TXT_ADD = "{{ _('add') }}";
         const TXT_CONFIRM_ANYWAY = "{{ _('confirm_anyway') }}";
         const CAT_TRANSLATIONS = {{ cat_translations | tojson | safe }};
+        const CURRENT_LANG = "{{ g.lang }}";
     </script>
 
     <script src="{{ url_for('static', filename='script.js') }}"></script>

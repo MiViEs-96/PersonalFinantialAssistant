@@ -95,6 +95,16 @@ function openModal(selectElement) {
     document.getElementById('modal-name').value = '';
     document.getElementById('modal-error').style.display = 'none';
     document.getElementById('translation-fields').style.display = 'none';
+
+    // UI Language logic
+    const langNames = { 'it': 'Italiano', 'en': 'English', 'zh': '中文' };
+    document.getElementById('modal-primary-label').textContent = langNames[CURRENT_LANG] || 'Category';
+
+    // Hide primary language from translation fields
+    ['it', 'en', 'zh'].forEach(l => {
+        document.getElementById(`trans-group-${l}`).style.display = (l === CURRENT_LANG) ? 'none' : 'block';
+    });
+
     document.getElementById('categoryModal').style.display = 'flex';
     document.getElementById('modal-confirm-btn').textContent = typeof TXT_ADD !== 'undefined' ? TXT_ADD : 'Aggiungi';
     forceSubmit = false;
@@ -115,13 +125,17 @@ async function autoTranslate() {
         const response = await fetch('/api/translate_category', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name })
+            body: JSON.stringify({ name, source_lang: CURRENT_LANG })
         });
         const result = await response.json();
         if (response.ok) {
             document.getElementById('trans-it').value = result.it;
             document.getElementById('trans-en').value = result.en;
             document.getElementById('trans-zh').value = result.zh;
+
+            // Set current lang value explicitly too
+            document.getElementById(`trans-${CURRENT_LANG}`).value = name;
+
             document.getElementById('translation-fields').style.display = 'block';
         }
     } catch (e) {
@@ -130,24 +144,31 @@ async function autoTranslate() {
 }
 
 async function submitCategory() {
-    const name = document.getElementById('modal-name').value.trim();
+    const primaryName = document.getElementById('modal-name').value.trim();
     const type = document.getElementById('modal-type').value;
     const errorEl = document.getElementById('modal-error');
     const confirmBtn = document.getElementById('modal-confirm-btn');
 
-    if (!name) return;
+    if (!primaryName) return;
+
+    // We MUST have an English name for the database key
+    let enName = document.getElementById('trans-en').value.trim();
+    if (!enName) enName = primaryName; // Fallback
 
     const trans = {
         it: document.getElementById('trans-it').value.trim(),
-        en: document.getElementById('trans-en').value.trim(),
+        en: enName,
         zh: document.getElementById('trans-zh').value.trim()
     };
+
+    // Ensure the primary language value is set in trans even if field was hidden
+    trans[CURRENT_LANG] = primaryName;
 
     try {
         const response = await fetch('/api/add_category', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, type, force: forceSubmit, translations: trans })
+            body: JSON.stringify({ name: enName, type, force: forceSubmit, translations: trans })
         });
 
         const result = await response.json();

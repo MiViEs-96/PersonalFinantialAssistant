@@ -185,15 +185,16 @@ def get_categories():
 def translate_category_api():
     data = request.get_json()
     name = data.get('name')
+    source_lang = data.get('source_lang', 'it')
     if not name:
         return jsonify({"error": "No name"}), 400
 
     translator = Translator()
     try:
-        # Detect source lang or assume current
-        trans_it = translator.translate(name, dest='it').text
-        trans_en = translator.translate(name, dest='en').text
-        trans_zh = translator.translate(name, dest='zh-cn').text
+        # Translate from the source language used in the primary input
+        trans_it = translator.translate(name, src=source_lang, dest='it').text
+        trans_en = translator.translate(name, src=source_lang, dest='en').text
+        trans_zh = translator.translate(name, src=source_lang, dest='zh-cn').text
 
         return jsonify({
             "it": trans_it,
@@ -290,12 +291,20 @@ def more_info():
             db_dir = 'entrata' if ctype == 'income' else 'uscita'
             count = usage_counts.get((cat, db_dir), 0)
 
-            # Translate
-            display_name = cat
-            if cat in custom_trans and g.lang in custom_trans[cat]:
-                display_name = custom_trans[cat][g.lang]
-            else:
-                display_name = translations.TRANSLATIONS[g.lang].get(cat.lower(), cat)
+            # Translation logic with multiple fallbacks to avoid empty strings
+            display_name = ""
+
+            # 1. Check custom translations first
+            if cat in custom_trans:
+                display_name = custom_trans[cat].get(g.lang, "")
+
+            # 2. Check standard translations if not found or empty
+            if not display_name:
+                display_name = translations.TRANSLATIONS[g.lang].get(cat.lower(), "")
+
+            # 3. Final fallback to the database name itself
+            if not display_name:
+                display_name = cat
 
             cat_details[ctype].append({
                 "name": cat,
@@ -392,6 +401,7 @@ def add_category():
         return jsonify({"error": "Unauthorized"}), 401
 
     data = request.get_json()
+    # 'name' here is now the English translation from the JS
     new_name_raw = data.get('name', '').strip().capitalize()
     category_type = data.get('type', 'expense').lower()
     force = data.get('force', False)
