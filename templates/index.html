@@ -25,6 +25,25 @@
 
                 <div style="color: #dc3545; margin-top: 1rem;">{{ _('expenses') }}</div>
                 <div class="summary-val" style="color: #dc3545;">- {{ "%.2f"|format(monthly_expense) }} €</div>
+
+                <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 1rem 0;">
+
+                <div style="font-weight: bold;">{{ _('balance') }}</div>
+                <div class="summary-val" style="color: {{ 'var(--success-color)' if monthly_balance >= 0 else '#dc3545' }}; font-weight: bold;">
+                    {{ "+" if monthly_balance > 0 }}{{ "%.2f"|format(monthly_balance) }} €
+                </div>
+            </div>
+
+            <div class="content-card">
+                <div style="font-size: 0.9rem; color: var(--primary-color);">{{ _('previous_month') }}</div>
+                <div class="summary-val" style="margin: 0.5rem 0;">{{ "%.2f"|format(prev_balance) }} €</div>
+
+                <div style="font-size: 0.85rem;">
+                    {{ _('variation') }}:
+                    <span style="color: {{ 'var(--success-color)' if variation >= 0 else '#dc3545' }}; font-weight: 500;">
+                        {{ "+" if variation > 0 }}{{ "%.1f"|format(variation) }}%
+                    </span>
+                </div>
             </div>
         </div>
 
@@ -100,7 +119,7 @@
                                 <td>{{ t['date'] }}</td>
                                 <td>{{ "%.2f"|format(t['amount']) }} {{ t['currency'] }}</td>
                                 <td>{{ _(t['direction']) }}</td>
-                                <td>{{ t['category'] }}</td>
+                                <td>{{ cat_translations.get(t['category'], t['category']) }}</td>
                             </tr>
                             {% else %}
                             <tr>
@@ -143,6 +162,7 @@
         const TXT_OTHER = "{{ _('other') }}";
         const TXT_ADD = "{{ _('add') }}";
         const TXT_CONFIRM_ANYWAY = "{{ _('confirm_anyway') }}";
+        const CAT_TRANSLATIONS = {{ cat_translations | tojson | safe }};
     </script>
 
     <script src="{{ url_for('static', filename='script.js') }}"></script>

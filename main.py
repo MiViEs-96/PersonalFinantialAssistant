@@ -56,11 +56,48 @@ def index():
     all_transactions = database_manager.get_transactions_by_user(nickname)
     latest_transactions = all_transactions[:5] # Last 5
 
+    # Calculate balance
+    monthly_balance = monthly_income - monthly_expense
+
+    # Previous Month Stats
+    from datetime import timedelta
+    first_of_current = date(today.year, today.month, 1)
+    last_of_prev = first_of_current - timedelta(days=1)
+    first_of_prev = date(last_of_prev.year, last_of_prev.month, 1)
+
+    prev_month_data = database_manager.get_stats_data(nickname,
+                                                     start_date=first_of_prev.isoformat(),
+                                                     end_date=last_of_prev.isoformat())
+
+    prev_income = sum(t['amount'] for t in prev_month_data if t['direction'] == 'entrata')
+    prev_expense = sum(t['amount'] for t in prev_month_data if t['direction'] == 'uscita')
+    prev_balance = prev_income - prev_expense
+
+    # Calculate variation %
+    variation = 0
+    if prev_balance != 0:
+        variation = ((monthly_balance - prev_balance) / abs(prev_balance)) * 100
+    elif monthly_balance != 0:
+        variation = 100 # From 0 to something is 100% gain
+
+    # Build category translations map for JS
+    cat_translations = {}
+    lang_dict = translations.TRANSLATIONS.get(g.lang, translations.TRANSLATIONS['it'])
+    with open('categories.json', 'r') as f:
+        all_cats = json.load(f)
+        for cat_list in all_cats.values():
+            for c in cat_list:
+                cat_translations[c] = lang_dict.get(c.lower(), c)
+
     return render_template('index.html',
                            transactions=latest_transactions,
                            today=today.isoformat(),
                            monthly_income=monthly_income,
-                           monthly_expense=monthly_expense)
+                           monthly_expense=monthly_expense,
+                           monthly_balance=monthly_balance,
+                           prev_balance=prev_balance,
+                           variation=variation,
+                           cat_translations=cat_translations)
 
 @app.route('/add_transaction', methods=['POST'])
 def add_transaction():

@@ -35,8 +35,10 @@ function updateCategoryOptions(selectElement, direction, selectedValue = null) {
     list.forEach(cat => {
         const opt = document.createElement('option');
         opt.value = cat;
-        // We might want to translate the display name
-        opt.textContent = cat;
+        // Use translated name if available
+        opt.textContent = (typeof CAT_TRANSLATIONS !== 'undefined' && CAT_TRANSLATIONS[cat])
+                            ? CAT_TRANSLATIONS[cat]
+                            : cat;
         if(cat === selectedValue) opt.selected = true;
         selectElement.appendChild(opt);
     });
