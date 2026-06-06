@@ -43,7 +43,19 @@ TRANSLATIONS = {
         'financial_management': 'Gestione Finanziaria',
         'what_do_you_want_to_do': 'Cosa vuoi fare oggi?',
         'monthly_summary': 'Riepilogo Mensile',
-        'current_month': 'Mese Corrente'
+        'current_month': 'Mese Corrente',
+        'other': 'Altro...',
+        'add_category': 'Aggiungi Categoria',
+        'new_category_name': 'Nome Nuova Categoria',
+        'confirm_anyway': 'Conferma Comunque',
+        'category_exists': 'Questa categoria esiste già: {name}',
+        'did_you_mean': 'Forse intendevi: {suggestion}?',
+        'cancel': 'Annulla',
+        'payment': 'Pagamento',
+        'sales': 'Vendite',
+        'gift': 'Regalo',
+        'groceries': 'Spesa',
+        'clothes': 'Abbigliamento'
     },
     'en': {
         'welcome': 'Welcome',
@@ -89,7 +101,19 @@ TRANSLATIONS = {
         'financial_management': 'Financial Management',
         'what_do_you_want_to_do': 'What do you want to do today?',
         'monthly_summary': 'Monthly Summary',
-        'current_month': 'Current Month'
+        'current_month': 'Current Month',
+        'other': 'Other...',
+        'add_category': 'Add Category',
+        'new_category_name': 'New Category Name',
+        'confirm_anyway': 'Confirm Anyway',
+        'category_exists': 'This category already exists: {name}',
+        'did_you_mean': 'Did you mean: {suggestion}?',
+        'cancel': 'Cancel',
+        'payment': 'Payment',
+        'sales': 'Sales',
+        'gift': 'Gift',
+        'groceries': 'Groceries',
+        'clothes': 'Clothes'
     },
     'zh': {
         'welcome': '欢迎',
@@ -135,6 +159,18 @@ TRANSLATIONS = {
         'financial_management': '财务管理',
         'what_do_you_want_to_do': '你今天想做什么？',
         'monthly_summary': '月度总结',
-        'current_month': '本月'
+        'current_month': '本月',
+        'other': '其他...',
+        'add_category': '添加类别',
+        'new_category_name': '新类别名称',
+        'confirm_anyway': '仍然确认',
+        'category_exists': '该类别已存在：{name}',
+        'did_you_mean': '你是指：{suggestion} 吗？',
+        'cancel': '取消',
+        'payment': '付款',
+        'sales': '销售',
+        'gift': '礼物',
+        'groceries': '杂货',
+        'clothes': '衣服'
     }
 }

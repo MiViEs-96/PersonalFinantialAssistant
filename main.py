@@ -3,6 +3,9 @@ from auth import auth_bp
 import database_manager
 import os
 import translations
+import json
+import difflib
+from flask import jsonify
 from mdns_broadcaster import start_mdns_broadcast
 
 app = Flask(__name__)
@@ -101,6 +104,81 @@ def stats():
     chart_data = analytics.process_data_for_charts(transactions)
 
     return render_template('stats.html', chart_data=chart_data, start_date=start_date, end_date=end_date)
+
+@app.route('/api/categories')
+def get_categories():
+    if not os.path.exists('categories.json'):
+        return jsonify({"income": [], "expense": []})
+    with open('categories.json', 'r') as f:
+        return jsonify(json.load(f))
+
+@app.route('/api/add_category', methods=['POST'])
+def add_category():
+    if 'user_id' not in session:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    data = request.get_json()
+    new_name_raw = data.get('name', '').strip()
+    category_type = data.get('type', 'expense').lower()
+    force = data.get('force', False)
+
+    if not new_name_raw:
+        return jsonify({"error": "Empty name"}), 400
+
+    # Load existing categories
+    with open('categories.json', 'r') as f:
+        categories = json.load(f)
+
+    target_list = categories.get(category_type, [])
+
+    # 1. Check for translations (Case-insensitive)
+    # We want to save the English version if it matches a known translation in ANY language
+    eng_name = new_name_raw
+    found_in_translations = False
+
+    for lang in translations.TRANSLATIONS:
+        for key, val in translations.TRANSLATIONS[lang].items():
+            if val.lower() == new_name_raw.lower():
+                # We found a match, use the key (which is our English/DB name)
+                # But only if it's one of our core categories or keys
+                # We need to be careful not to map "Enter" to "enter" as a category.
+                # Only map if it's in our initial set or common.
+                if key in ['payment', 'sales', 'gift', 'groceries', 'clothes']:
+                    eng_name = key.capitalize()
+                    found_in_translations = True
+                    break
+        if found_in_translations: break
+
+    # 2. Duplicate Check
+    if any(c.lower() == eng_name.lower() for c in target_list):
+        return jsonify({
+            "error": "duplicate",
+            "message": translations.TRANSLATIONS[g.lang]['category_exists'].format(name=eng_name)
+        }), 409
+
+    # 3. Misspelling check (against localized names in current language)
+    current_lang_categories = []
+    # Map current English categories to current language names for comparison
+    for c in target_list:
+        loc_val = translations.TRANSLATIONS[g.lang].get(c.lower(), c)
+        current_lang_categories.append(loc_val)
+
+    if not force:
+        matches = difflib.get_close_matches(new_name_raw, current_lang_categories, n=1, cutoff=0.7)
+        if matches:
+            return jsonify({
+                "error": "mispelling",
+                "suggestion": matches[0],
+                "message": translations.TRANSLATIONS[g.lang]['did_you_mean'].format(suggestion=matches[0])
+            }), 400
+
+    # 4. Add and Save
+    target_list.append(eng_name)
+    categories[category_type] = target_list
+    with open('categories.json', 'w') as f:
+        json.dump(categories, f, indent=4)
+
+    return jsonify({"success": True, "name": eng_name, "type": category_type})
 
 if __name__ == '__main__':
     # Verifico le tabelle all'avvio

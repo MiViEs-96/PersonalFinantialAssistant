@@ -55,12 +55,16 @@
                                         </select>
                                     </td>
                                     <td>
-                                        <select name="direction[]">
+                                        <select name="direction[]" class="direction-select">
                                             <option value="uscita">{{ _('expense') }}</option>
                                             <option value="entrata">{{ _('income') }}</option>
                                         </select>
                                     </td>
-                                    <td><input type="text" name="category[]" placeholder="es. Cibo" required></td>
+                                    <td>
+                                        <select name="category[]" class="category-select" required>
+                                            <!-- Dynamic categories -->
+                                        </select>
+                                    </td>
                                 </tr>
                                 <tr>
                                     <th colspan="5">{{ _('comment') }}</th>
@@ -110,23 +114,36 @@
         </div>
     </div>
 
+    <!-- Category Modal -->
+    <div id="categoryModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>{{ _('add_category') }}</h3>
+            </div>
+            <div class="form-group">
+                <label>{{ _('type') }}</label>
+                <select id="modal-type">
+                    <option value="expense">{{ _('expense') }}</option>
+                    <option value="income">{{ _('income') }}</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>{{ _('new_category_name') }}</label>
+                <input type="text" id="modal-name" placeholder="es. Cibo">
+            </div>
+            <div id="modal-error" class="error-msg" style="display: none;"></div>
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeModal()">{{ _('cancel') }}</button>
+                <button type="button" id="modal-confirm-btn" onclick="submitCategory()">{{ _('add') }}</button>
+            </div>
+        </div>
+    </div>
+
     <script>
-        function addRow() {
-            const tbody = document.querySelector('#transaction-table tbody');
-
-            const newRow = tbody.rows[0].cloneNode(true);
-            const inputs = newRow.querySelectorAll('input');
-            inputs.forEach(input => {
-                if(input.type !== 'date') input.value = '';
-            });
-
-            const newCommentLabel = tbody.rows[1].cloneNode(true);
-            const newCommentRow = tbody.rows[2].cloneNode(true);
-            newCommentRow.querySelector('input').value = '';
-
-            tbody.appendChild(newRow);
-            tbody.appendChild(newCommentLabel);
-            tbody.appendChild(newCommentRow);
-        }
+        const TXT_OTHER = "{{ _('other') }}";
+        const TXT_ADD = "{{ _('add') }}";
+        const TXT_CONFIRM_ANYWAY = "{{ _('confirm_anyway') }}";
     </script>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
 {% endblock %}
