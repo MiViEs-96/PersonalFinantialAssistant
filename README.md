@@ -37,7 +37,7 @@ Il progetto è strutturato in modo modulare per facilitare le modifiche:
 ### 3. Dati e Configurazioni
 - **`finance_assistant.db`**: Database SQLite (creato automaticamente al primo avvio).
 - **`categories.json`**: Elenco globale delle categorie divise per Entrate/Uscite.
-- **`custom_translations.json`**: Mappa delle traduzioni per le categorie create dagli utenti.
+- **`categories_translation.py`**: Dizionario delle traduzioni per tutte le categorie (predefinite e personalizzate).
 
 ---
 

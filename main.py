@@ -3,6 +3,7 @@ from auth import auth_bp
 import database_manager
 import os
 import translations
+import categories_translation
 import json
 import difflib
 import csv
@@ -26,15 +27,10 @@ def before_request():
 def inject_translations():
     lang = g.lang
     def translate(key):
-        # 1. Check in custom_translations.json
-        if os.path.exists('custom_translations.json'):
-            try:
-                with open('custom_translations.json', 'r') as f:
-                    custom = json.load(f)
-                    if key in custom and lang in custom[key]:
-                        return custom[key][lang]
-            except:
-                pass
+        # 1. Check in categories_translation.py
+        custom = getattr(categories_translation, 'CATEGORIES_TRANSLATIONS', {})
+        if key in custom and lang in custom[key]:
+            return custom[key][lang]
 
         # 2. Check in standard translations
         return translations.TRANSLATIONS.get(lang, translations.TRANSLATIONS['it']).get(key, key)
@@ -97,13 +93,9 @@ def index():
 
     # Build category translations map for JS
     cat_translations = {}
-    lang_dict = translations.TRANSLATIONS.get(g.lang, translations.TRANSLATIONS['it'])
 
-    # Load custom translations
-    custom_cats_trans = {}
-    if os.path.exists('custom_translations.json'):
-        with open('custom_translations.json', 'r') as f:
-            custom_cats_trans = json.load(f)
+    # Load category translations
+    custom_cats_trans = getattr(categories_translation, 'CATEGORIES_TRANSLATIONS', {})
 
     with open('categories.json', 'r') as f:
         all_cats = json.load(f)
@@ -112,12 +104,6 @@ def index():
                 # 1. Custom translations first
                 if c in custom_cats_trans and g.lang in custom_cats_trans[c]:
                     cat_translations[c] = custom_cats_trans[c][g.lang]
-                    continue
-
-                # 2. Standard translations
-                translated = lang_dict.get(c.lower())
-                if translated:
-                    cat_translations[c] = translated
                 else:
                     cat_translations[c] = c
 
@@ -231,13 +217,7 @@ def history():
     all_cats = sorted(list(set(all_cats_data['income'] + all_cats_data['expense'])))
 
     # Category translations for display
-    lang_dict = translations.TRANSLATIONS.get(g.lang, translations.TRANSLATIONS['it'])
-
-    custom_trans = {}
-    if os.path.exists('custom_translations.json'):
-        with open('custom_translations.json', 'r') as f:
-            try: custom_trans = json.load(f)
-            except: pass
+    custom_trans = getattr(categories_translation, 'CATEGORIES_TRANSLATIONS', {})
 
     cat_translations = {}
     for c in all_cats:
@@ -245,9 +225,7 @@ def history():
         if c in custom_trans and g.lang in custom_trans[c]:
             cat_translations[c] = custom_trans[c][g.lang]
         else:
-            # 2. Standard
-            translated = lang_dict.get(c.lower())
-            cat_translations[c] = translated if translated else c
+            cat_translations[c] = c
 
     return render_template('history.html',
                            transactions=transactions,
@@ -278,11 +256,7 @@ def more_info():
         categories_data = json.load(f)
 
     # Load custom translations for display
-    custom_trans = {}
-    if os.path.exists('custom_translations.json'):
-        with open('custom_translations.json', 'r') as f:
-            try: custom_trans = json.load(f)
-            except: pass
+    custom_trans = getattr(categories_translation, 'CATEGORIES_TRANSLATIONS', {})
 
     # Prepare detailed category info
     cat_details = {"income": [], "expense": []}
@@ -291,18 +265,11 @@ def more_info():
             db_dir = 'entrata' if ctype == 'income' else 'uscita'
             count = usage_counts.get((cat, db_dir), 0)
 
-            # Translation logic with multiple fallbacks to avoid empty strings
+            # Translation logic
             display_name = ""
-
-            # 1. Check custom translations first
             if cat in custom_trans:
                 display_name = custom_trans[cat].get(g.lang, "")
 
-            # 2. Check standard translations if not found or empty
-            if not display_name:
-                display_name = translations.TRANSLATIONS[g.lang].get(cat.lower(), "")
-
-            # 3. Final fallback to the database name itself
             if not display_name:
                 display_name = cat
 
@@ -360,14 +327,13 @@ def delete_category():
         with open('categories.json', 'w') as f:
             json.dump(categories, f, indent=4)
 
-        # Optional: delete from custom_translations.json too?
-        if os.path.exists('custom_translations.json'):
-            with open('custom_translations.json', 'r') as f:
-                custom = json.load(f)
-            if cat_name in custom:
-                del custom[cat_name]
-                with open('custom_translations.json', 'w') as f:
-                    json.dump(custom, f, indent=4)
+        # Delete from categories_translation.py too
+        custom = getattr(categories_translation, 'CATEGORIES_TRANSLATIONS', {})
+        if cat_name in custom:
+            del custom[cat_name]
+            # Write back to file
+            with open('categories_translation.py', 'w') as f:
+                f.write("CATEGORIES_TRANSLATIONS = " + json.dumps(custom, indent=4))
 
         return jsonify({"success": True})
 
@@ -461,12 +427,7 @@ def add_category():
 
     # 5. Save Custom Translations
     if manual_trans:
-        custom_trans = {}
-        if os.path.exists('custom_translations.json'):
-            with open('custom_translations.json', 'r') as f:
-                try:
-                    custom_trans = json.load(f)
-                except: pass
+        custom_trans = getattr(categories_translation, 'CATEGORIES_TRANSLATIONS', {})
 
         custom_trans[eng_name] = {
             "it": manual_trans.get("it", eng_name),
@@ -474,8 +435,8 @@ def add_category():
             "zh": manual_trans.get("zh", eng_name)
         }
 
-        with open('custom_translations.json', 'w') as f:
-            json.dump(custom_trans, f, indent=4)
+        with open('categories_translation.py', 'w') as f:
+            f.write("CATEGORIES_TRANSLATIONS = " + json.dumps(custom_trans, indent=4))
 
     return jsonify({"success": True, "name": eng_name, "type": category_type})
 
