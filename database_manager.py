@@ -90,7 +90,7 @@ def add_transaction(date, amount, currency, direction, category, nickname, comme
 def get_transactions_by_user(nickname):
     conn = get_db_connection()
     transactions = conn.execute('''
-        SELECT * FROM transactions WHERE nickname = ? ORDER BY date DESC
+        SELECT * FROM transactions WHERE nickname = ? ORDER BY date DESC, id DESC
     ''', (nickname,)).fetchall()
     conn.close()
     return transactions
@@ -110,6 +110,36 @@ def get_stats_data(nickname, start_date=None, end_date=None):
     data = conn.execute(query, params).fetchall()
     conn.close()
     return data
+
+def get_paginated_transactions(nickname, page=1, per_page=10, start_date=None, end_date=None, direction=None, category=None):
+    conn = get_db_connection()
+    query = 'FROM transactions WHERE nickname = ?'
+    params = [nickname]
+
+    if start_date:
+        query += ' AND date >= ?'
+        params.append(start_date)
+    if end_date:
+        query += ' AND date <= ?'
+        params.append(end_date)
+    if direction:
+        query += ' AND direction = ?'
+        params.append(direction)
+    if category:
+        query += ' AND category = ?'
+        params.append(category)
+
+    # Get total count
+    count_query = 'SELECT COUNT(*) ' + query
+    total_count = conn.execute(count_query, params).fetchone()[0]
+
+    # Get data
+    data_query = 'SELECT * ' + query + ' ORDER BY date DESC, id DESC LIMIT ? OFFSET ?'
+    data_params = params + [per_page, (page - 1) * per_page]
+    transactions = conn.execute(data_query, data_params).fetchall()
+
+    conn.close()
+    return transactions, total_count
 
 if __name__ == '__main__':
     init_db()

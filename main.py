@@ -5,7 +5,9 @@ import os
 import translations
 import json
 import difflib
-from flask import jsonify
+import csv
+import io
+from flask import jsonify, make_response
 from mdns_broadcaster import start_mdns_broadcast
 
 app = Flask(__name__)
@@ -148,6 +150,73 @@ def get_categories():
         return jsonify({"income": [], "expense": []})
     with open('categories.json', 'r') as f:
         return jsonify(json.load(f))
+
+@app.route('/history')
+def history():
+    if 'user_id' not in session:
+        return redirect(url_for('auth.login'))
+
+    nickname = session['nickname']
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 10, type=int)
+    start_date = request.args.get('start_date')
+    end_date = request.args.get('end_date')
+    direction = request.args.get('direction')
+    category = request.args.get('category')
+
+    transactions, total_count = database_manager.get_paginated_transactions(
+        nickname, page, per_page, start_date, end_date, direction, category
+    )
+
+    import math
+    total_pages = math.ceil(total_count / per_page)
+
+    # Load all categories for the filter
+    with open('categories.json', 'r') as f:
+        all_cats_data = json.load(f)
+
+    all_cats = sorted(list(set(all_cats_data['income'] + all_cats_data['expense'])))
+
+    # Category translations for display
+    lang_dict = translations.TRANSLATIONS.get(g.lang, translations.TRANSLATIONS['it'])
+    cat_translations = {c: lang_dict.get(c.lower(), c) for c in all_cats}
+
+    return render_template('history.html',
+                           transactions=transactions,
+                           page=page,
+                           per_page=per_page,
+                           total_pages=total_pages,
+                           total_count=total_count,
+                           all_cats=all_cats,
+                           cat_translations=cat_translations,
+                           filters={
+                               'start_date': start_date,
+                               'end_date': end_date,
+                               'direction': direction,
+                               'category': category
+                           })
+
+@app.route('/download_csv')
+def download_csv():
+    if 'user_id' not in session:
+        return redirect(url_for('auth.login'))
+
+    nickname = session['nickname']
+    transactions = database_manager.get_transactions_by_user(nickname)
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+
+    # Header
+    writer.writerow(['ID', 'Date', 'Amount', 'Currency', 'Type', 'Category', 'Comment'])
+
+    for t in transactions:
+        writer.writerow([t['id'], t['date'], t['amount'], t['currency'], t['direction'], t['category'], t['comment']])
+
+    response = make_response(output.getvalue())
+    response.headers["Content-Disposition"] = f"attachment; filename=transactions_{nickname}.csv"
+    response.headers["Content-type"] = "text/csv"
+    return response
 
 @app.route('/api/add_category', methods=['POST'])
 def add_category():

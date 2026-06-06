@@ -11,7 +11,7 @@
         <div class="nav-links-container">
             {% if session['nickname'] %}
                 <a href="{{ url_for('dashboard') }}" class="nav-item {% if request.endpoint == 'dashboard' %}active{% endif %}">{{ _('home') }}</a>
-                <a href="{{ url_for('index') }}" class="nav-item {% if request.endpoint in ['index', 'stats'] %}active{% endif %}">{{ _('financial_management') }}</a>
+                <a href="{{ url_for('index') }}" class="nav-item {% if request.endpoint in ['index', 'stats', 'history'] %}active{% endif %}">{{ _('financial_management') }}</a>
             {% else %}
                 <span class="nav-item active">Finance Assistant</span>
             {% endif %}
@@ -29,9 +29,10 @@
         </div>
     </header>
 
-    {% if session['nickname'] and request.endpoint in ['index', 'stats'] %}
+    {% if session['nickname'] and request.endpoint in ['index', 'stats', 'history'] %}
     <nav class="sub-nav">
         <a href="{{ url_for('index') }}" class="nav-item {% if request.endpoint == 'index' %}active{% endif %}">{{ _('home') }}</a>
+        <a href="{{ url_for('history') }}" class="nav-item {% if request.endpoint == 'history' %}active{% endif %}">{{ _('history') }}</a>
         <a href="{{ url_for('stats') }}" class="nav-item {% if request.endpoint == 'stats' %}active{% endif %}">{{ _('stats') }}</a>
     </nav>
     {% endif %}
