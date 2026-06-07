@@ -183,7 +183,7 @@ def get_categories():
         return jsonify(json.load(f))
 
 @app.route('/api/translate_category', methods=['POST'])
-async def translate_category_api():
+def translate_category_api():
     data = request.get_json()
     name = data.get('name')
     source_lang = data.get('source_lang', 'it')
@@ -192,17 +192,23 @@ async def translate_category_api():
 
     translator = Translator()
     try:
-        # Robustly handle both sync and async return values for googletrans 4.0.0rc1
-        # This is needed because behavior differs between OS/environments
-        async def do_trans(text, src, dest):
+        import asyncio
+
+        def run_translate(text, src, dest):
             res = translator.translate(text, src=src, dest=dest)
             if hasattr(res, '__await__'):
-                return await res
+                # Handle async return in a sync context
+                try:
+                    loop = asyncio.get_event_loop()
+                except RuntimeError:
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                return loop.run_until_complete(res)
             return res
 
-        it_res = await do_trans(name, source_lang, 'it')
-        en_res = await do_trans(name, source_lang, 'en')
-        zh_res = await do_trans(name, source_lang, 'zh-cn')
+        it_res = run_translate(name, source_lang, 'it')
+        en_res = run_translate(name, source_lang, 'en')
+        zh_res = run_translate(name, source_lang, 'zh-cn')
 
         return jsonify({
             "it": it_res.text,
@@ -463,12 +469,19 @@ def add_category():
 
     # 5. Save Custom Translations
     if manual_trans:
+        import importlib
+        importlib.reload(categories_translation)
         custom_trans = getattr(categories_translation, 'CATEGORIES_TRANSLATIONS', {})
 
+        # Ensure values are not empty, fallback to eng_name
+        it_val = manual_trans.get("it") or eng_name
+        en_val = manual_trans.get("en") or eng_name
+        zh_val = manual_trans.get("zh") or eng_name
+
         custom_trans[eng_name] = {
-            "it": manual_trans.get("it", eng_name),
-            "en": manual_trans.get("en", eng_name),
-            "zh": manual_trans.get("zh", eng_name)
+            "it": it_val,
+            "en": en_val,
+            "zh": zh_val
         }
 
         with open('categories_translation.py', 'w', encoding='utf-8') as f:
@@ -494,8 +507,17 @@ if __name__ == '__main__':
         # Improved cleanup to avoid WinError 10038 on Windows
         if 'zc' in locals() and zc:
             try:
-                zc.unregister_service(info)
-                # Use a small timeout for close to prevent blocking the reload thread
-                zc.close()
+                # We wrap everything in try/except to prevent reload blocking
+                import threading
+                def stop_zc():
+                    try:
+                        zc.unregister_service(info)
+                        zc.close()
+                    except: pass
+
+                # Run cleanup in a separate thread with a timeout to avoid hanging the main process
+                t = threading.Thread(target=stop_zc)
+                t.start()
+                t.join(timeout=2.0)
             except Exception as e:
                 print(f"Cleanup error: {e}")

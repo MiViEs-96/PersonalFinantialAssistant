@@ -121,6 +121,11 @@ async function autoTranslate() {
     const name = document.getElementById('modal-name').value.trim();
     if (!name || name.length < 2) return;
 
+    const btn = document.getElementById('modal-confirm-btn');
+    const originalText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = "...";
+
     try {
         const response = await fetch('/api/translate_category', {
             method: 'POST',
@@ -129,17 +134,26 @@ async function autoTranslate() {
         });
         const result = await response.json();
         if (response.ok) {
-            document.getElementById('trans-it').value = result.it;
-            document.getElementById('trans-en').value = result.en;
-            document.getElementById('trans-zh').value = result.zh;
+            // Use fallback if translation is empty or same as key
+            document.getElementById('trans-it').value = result.it || name;
+            document.getElementById('trans-en').value = result.en || name;
+            document.getElementById('trans-zh').value = result.zh || name;
 
-            // Set current lang value explicitly too
+            // Set current lang value explicitly
             document.getElementById(`trans-${CURRENT_LANG}`).value = name;
 
             document.getElementById('translation-fields').style.display = 'block';
         }
     } catch (e) {
         console.error("Auto-translate failed", e);
+        // On failure, at least fill them with the name
+        document.getElementById('trans-it').value = name;
+        document.getElementById('trans-en').value = name;
+        document.getElementById('trans-zh').value = name;
+        document.getElementById('translation-fields').style.display = 'block';
+    } finally {
+        btn.disabled = false;
+        btn.textContent = originalText;
     }
 }
 
