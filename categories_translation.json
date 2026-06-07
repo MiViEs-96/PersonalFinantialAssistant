@@ -1,4 +1,4 @@
-CATEGORIES_TRANSLATIONS = {
+{
     "Payment": {"it": "Pagamento", "en": "Payment", "zh": "付款"},
     "Sales": {"it": "Vendite", "en": "Sales", "zh": "销售"},
     "Gift": {"it": "Regalo", "en": "Gift", "zh": "礼物"},
@@ -11,6 +11,8 @@ CATEGORIES_TRANSLATIONS = {
     "Rent": {"it": "Affitto", "en": "Rent", "zh": "租金"},
     "Utilities": {"it": "Utenze", "en": "Utilities", "zh": "水电费"},
     "Bonus": {"it": "Bonus", "en": "Bonus", "zh": "奖金"},
+    "Bill": {"it": "Bolletta", "en": "Bill", "zh": "账单"},
+    "House": {"it": "Casa", "en": "House", "zh": "房子"},
     "Casa": {"it": "Casa", "en": "Casa", "zh": "卡萨"},
     "Ufficio": {"it": "Ufficio", "en": "Office", "zh": "办公室"}
 }

@@ -3,7 +3,6 @@ from auth import auth_bp
 import database_manager
 import os
 import translations
-import categories_translation
 import json
 import difflib
 import csv
@@ -14,6 +13,24 @@ from mdns_broadcaster import start_mdns_broadcast
 from googletrans import Translator
 
 app = Flask(__name__)
+
+# ---- Helper: legge le traduzioni categorie dal JSON ----
+_CAT_TRANS_CACHE = None
+
+def load_cat_translations(force_reload=False):
+    global _CAT_TRANS_CACHE
+    if _CAT_TRANS_CACHE is None or force_reload:
+        if not os.path.exists('categories_translation.json'):
+            return {}
+        with open('categories_translation.json', 'r', encoding='utf-8') as f:
+            _CAT_TRANS_CACHE = json.load(f)
+    return _CAT_TRANS_CACHE
+
+def save_cat_translations(data):
+    global _CAT_TRANS_CACHE
+    with open('categories_translation.json', 'w', encoding='utf-8') as f:
+        json.dump(data, f, indent=4, ensure_ascii=False)
+    _CAT_TRANS_CACHE = data  # aggiorna la cache
 
 # Persistent Secret Key
 secret_key_file = 'secret.key'
@@ -37,15 +54,10 @@ def before_request():
 def inject_translations():
     lang = g.lang
     def translate(key):
-        # 1. Check in categories_translation.py (Reload to catch dynamic changes)
-        try:
-            import importlib
-            importlib.reload(categories_translation)
-            custom = getattr(categories_translation, 'CATEGORIES_TRANSLATIONS', {})
-            if key in custom and lang in custom[key] and custom[key][lang]:
-                return custom[key][lang]
-        except:
-            pass
+        # 1. Check in categories_translation.json
+        custom = load_cat_translations()
+        if key in custom and lang in custom[key] and custom[key][lang]:
+            return custom[key][lang]
 
         # 2. Check in standard translations
         return translations.TRANSLATIONS.get(lang, translations.TRANSLATIONS['it']).get(key, key)
@@ -110,7 +122,7 @@ def index():
     cat_translations = {}
 
     # Load category translations
-    custom_cats_trans = getattr(categories_translation, 'CATEGORIES_TRANSLATIONS', {})
+    custom_cats_trans = load_cat_translations()
 
     with open('categories.json', 'r') as f:
         all_cats = json.load(f)
@@ -250,7 +262,7 @@ def history():
     all_cats = sorted(list(set(all_cats_data['income'] + all_cats_data['expense'])))
 
     # Category translations for display
-    custom_trans = getattr(categories_translation, 'CATEGORIES_TRANSLATIONS', {})
+    custom_trans = load_cat_translations()
 
     cat_translations = {}
     for c in all_cats:
@@ -288,10 +300,8 @@ def more_info():
     with open('categories.json', 'r') as f:
         categories_data = json.load(f)
 
-    # Load custom translations for display (with reload)
-    import importlib
-    importlib.reload(categories_translation)
-    custom_trans = getattr(categories_translation, 'CATEGORIES_TRANSLATIONS', {})
+    # Load custom translations for display
+    custom_trans = load_cat_translations(force_reload=True)
 
     # Prepare detailed category info
     cat_details = {"income": [], "expense": []}
@@ -369,13 +379,11 @@ def delete_category():
         with open('categories.json', 'w') as f:
             json.dump(categories, f, indent=4)
 
-        # Delete from categories_translation.py too
-        custom = getattr(categories_translation, 'CATEGORIES_TRANSLATIONS', {})
+        # Delete from categories_translation.json too
+        custom = load_cat_translations()
         if cat_name in custom:
             del custom[cat_name]
-            # Write back to file
-            with open('categories_translation.py', 'w', encoding='utf-8') as f:
-                f.write("CATEGORIES_TRANSLATIONS = " + json.dumps(custom, indent=4, ensure_ascii=False))
+            save_cat_translations(custom)
 
         return jsonify({"success": True})
 
@@ -469,9 +477,7 @@ def add_category():
 
     # 5. Save Custom Translations
     if manual_trans:
-        import importlib
-        importlib.reload(categories_translation)
-        custom_trans = getattr(categories_translation, 'CATEGORIES_TRANSLATIONS', {})
+        custom_trans = load_cat_translations(force_reload=True)
 
         # Ensure values are not empty, fallback to eng_name
         it_val = manual_trans.get("it") or eng_name
@@ -484,8 +490,7 @@ def add_category():
             "zh": zh_val
         }
 
-        with open('categories_translation.py', 'w', encoding='utf-8') as f:
-            f.write("CATEGORIES_TRANSLATIONS = " + json.dumps(custom_trans, indent=4, ensure_ascii=False))
+        save_cat_translations(custom_trans)
 
     return jsonify({"success": True, "name": eng_name, "type": category_type})
 

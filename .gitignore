@@ -10,3 +10,6 @@ env.bak/
 venv.bak/
 *.db
 *.log
+secret.key
+categories_translation.py
+categories_translation.json

@@ -8,11 +8,11 @@ Questa documentazione fornisce una spiegazione approfondita di ogni script e del
 Questo è il file principale che avvia il server Flask e coordina tutti i moduli.
 
 ### Funzioni Chiave:
-- **`inject_translations()`**: Un `context_processor` che rende disponibile la funzione `_()` in tutti i template HTML. Cerca le traduzioni prima in `categories_translation.py` e poi in `translations.py`.
+- **`inject_translations()`**: Un `context_processor` che rende disponibile la funzione `_()` in tutti i template HTML. Cerca le traduzioni prima in `categories_translation.json` e poi in `translations.py`.
 - **`index()`**: Gestisce la pagina di gestione finanziaria. Calcola il saldo del mese corrente e del mese precedente, e prepara i dati per la visualizzazione delle ultime 5 transazioni.
 - **`add_transaction()`**: Riceve i dati dal form (supporta più righe contemporaneamente) e li inserisce nel database tramite `database_manager`.
 - **`translate_category_api()`**: Endpoint POST che utilizza la libreria `googletrans`. Prende un nome e una lingua di origine e restituisce le traduzioni in IT, EN e ZH.
-- **`add_category()`**: Salva una nuova categoria in `categories.json` (usando il nome inglese come chiave) e memorizza le traduzioni fornite dall'utente in `categories_translation.py`.
+- **`add_category()`**: Salva una nuova categoria in `categories.json` (usando il nome inglese come chiave) e memorizza le traduzioni fornite dall'utente in `categories_translation.json`.
 - **`more_info()`**: Prepara i dati per la pagina di amministrazione, inclusa la lista utenti e il conteggio dell'utilizzo globale di ogni categoria.
 - **`delete_category()`**: Verifica che una categoria non sia usata in nessuna transazione prima di eliminarla dai file JSON/Python.
 
@@ -79,5 +79,5 @@ Il cuore dell'interattività dell'utente.
 3. L'utente scrive "Mela" -> `autoTranslate()` riempie "Apple" e "苹果".
 4. Al "Salva", il JS invia "Apple" come nome principale e l'oggetto con le 3 traduzioni.
 5. Il server salva "Apple" in `categories.json`.
-6. Il server salva le traduzioni in `categories_translation.py`.
+6. Il server salva le traduzioni in `categories_translation.json`.
 7. Da quel momento, `inject_translations` userà quel file per mostrare "Mela" se il sito è in italiano.
