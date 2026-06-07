@@ -331,8 +331,12 @@ def more_info():
                 "count": count
             })
 
+    # Identify current user for profile management
+    current_user = next((u for u in users if u['nickname'] == session['nickname']), None)
+
     return render_template('more_info.html',
                            users=users,
+                           current_user=current_user,
                            cat_details=cat_details)
 
 @app.route('/update_profile', methods=['POST'])

@@ -32,7 +32,7 @@
 
             <div class="content-card">
                 <h3>{{ _('profile_management') }}</h3>
-                {% set current_user = users | selectattr('nickname', 'equalto', session['nickname']) | first %}
+                {% if current_user %}
                 <form action="{{ url_for('update_profile') }}" method="POST">
                     <div class="form-group">
                         <label>{{ _('full_name') }}</label>
@@ -44,6 +44,9 @@
                     </div>
                     <button type="submit">{{ _('save_changes') }}</button>
                 </form>
+                {% else %}
+                <p style="color: #dc3545;">User data not found.</p>
+                {% endif %}
             </div>
         </div>
 
