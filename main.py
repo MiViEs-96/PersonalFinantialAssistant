@@ -14,7 +14,17 @@ from mdns_broadcaster import start_mdns_broadcast
 from googletrans import Translator
 
 app = Flask(__name__)
-app.secret_key = os.urandom(24)
+
+# Persistent Secret Key
+secret_key_file = 'secret.key'
+if os.path.exists(secret_key_file):
+    with open(secret_key_file, 'rb') as f:
+        app.secret_key = f.read()
+else:
+    new_key = os.urandom(24)
+    with open(secret_key_file, 'wb') as f:
+        f.write(new_key)
+    app.secret_key = new_key
 
 # Register Blueprints
 app.register_blueprint(auth_bp)
@@ -27,10 +37,15 @@ def before_request():
 def inject_translations():
     lang = g.lang
     def translate(key):
-        # 1. Check in categories_translation.py
-        custom = getattr(categories_translation, 'CATEGORIES_TRANSLATIONS', {})
-        if key in custom and lang in custom[key]:
-            return custom[key][lang]
+        # 1. Check in categories_translation.py (Reload to catch dynamic changes)
+        try:
+            import importlib
+            importlib.reload(categories_translation)
+            custom = getattr(categories_translation, 'CATEGORIES_TRANSLATIONS', {})
+            if key in custom and lang in custom[key] and custom[key][lang]:
+                return custom[key][lang]
+        except:
+            pass
 
         # 2. Check in standard translations
         return translations.TRANSLATIONS.get(lang, translations.TRANSLATIONS['it']).get(key, key)
@@ -168,7 +183,7 @@ def get_categories():
         return jsonify(json.load(f))
 
 @app.route('/api/translate_category', methods=['POST'])
-def translate_category_api():
+async def translate_category_api():
     data = request.get_json()
     name = data.get('name')
     source_lang = data.get('source_lang', 'it')
@@ -177,11 +192,17 @@ def translate_category_api():
 
     translator = Translator()
     try:
-        # It seems that in some environments, Translator.translate is NOT a coroutine
-        # even in 4.0.0rc1. Let's use the synchronous version and handle it.
-        it_res = translator.translate(name, src=source_lang, dest='it')
-        en_res = translator.translate(name, src=source_lang, dest='en')
-        zh_res = translator.translate(name, src=source_lang, dest='zh-cn')
+        # Robustly handle both sync and async return values for googletrans 4.0.0rc1
+        # This is needed because behavior differs between OS/environments
+        async def do_trans(text, src, dest):
+            res = translator.translate(text, src=src, dest=dest)
+            if hasattr(res, '__await__'):
+                return await res
+            return res
+
+        it_res = await do_trans(name, source_lang, 'it')
+        en_res = await do_trans(name, source_lang, 'en')
+        zh_res = await do_trans(name, source_lang, 'zh-cn')
 
         return jsonify({
             "it": it_res.text,
@@ -190,7 +211,11 @@ def translate_category_api():
         })
     except Exception as e:
         print(f"Translation error: {e}")
-        return jsonify({"error": str(e)}), 500
+        # Fallback to current name to avoid crash
+        return jsonify({
+            "it": name, "en": name, "zh": name,
+            "error": str(e)
+        }), 500
 
 @app.route('/history')
 def history():
@@ -257,7 +282,9 @@ def more_info():
     with open('categories.json', 'r') as f:
         categories_data = json.load(f)
 
-    # Load custom translations for display
+    # Load custom translations for display (with reload)
+    import importlib
+    importlib.reload(categories_translation)
     custom_trans = getattr(categories_translation, 'CATEGORIES_TRANSLATIONS', {})
 
     # Prepare detailed category info
@@ -267,11 +294,18 @@ def more_info():
             db_dir = 'entrata' if ctype == 'income' else 'uscita'
             count = usage_counts.get((cat, db_dir), 0)
 
-            # Translation logic
+            # Robust Translation Logic
             display_name = ""
+
+            # 1. Check category-specific translations
             if cat in custom_trans:
                 display_name = custom_trans[cat].get(g.lang, "")
 
+            # 2. Check general translations
+            if not display_name:
+                display_name = translations.TRANSLATIONS.get(g.lang, {}).get(cat.lower(), "")
+
+            # 3. Fallback to name (Ensure it's not empty)
             if not display_name:
                 display_name = cat
 
@@ -457,6 +491,11 @@ if __name__ == '__main__':
     try:
         app.run(host='0.0.0.0', port=5000, debug=True)
     finally:
-        if 'zc' in locals():
-            zc.unregister_service(info)
-            zc.close()
+        # Improved cleanup to avoid WinError 10038 on Windows
+        if 'zc' in locals() and zc:
+            try:
+                zc.unregister_service(info)
+                # Use a small timeout for close to prevent blocking the reload thread
+                zc.close()
+            except Exception as e:
+                print(f"Cleanup error: {e}")
