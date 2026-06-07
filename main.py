@@ -177,17 +177,19 @@ def translate_category_api():
 
     translator = Translator()
     try:
-        # Translate from the source language used in the primary input
-        trans_it = translator.translate(name, src=source_lang, dest='it').text
-        trans_en = translator.translate(name, src=source_lang, dest='en').text
-        trans_zh = translator.translate(name, src=source_lang, dest='zh-cn').text
+        # It seems that in some environments, Translator.translate is NOT a coroutine
+        # even in 4.0.0rc1. Let's use the synchronous version and handle it.
+        it_res = translator.translate(name, src=source_lang, dest='it')
+        en_res = translator.translate(name, src=source_lang, dest='en')
+        zh_res = translator.translate(name, src=source_lang, dest='zh-cn')
 
         return jsonify({
-            "it": trans_it,
-            "en": trans_en,
-            "zh": trans_zh
+            "it": it_res.text,
+            "en": en_res.text,
+            "zh": zh_res.text
         })
     except Exception as e:
+        print(f"Translation error: {e}")
         return jsonify({"error": str(e)}), 500
 
 @app.route('/history')
@@ -332,8 +334,8 @@ def delete_category():
         if cat_name in custom:
             del custom[cat_name]
             # Write back to file
-            with open('categories_translation.py', 'w') as f:
-                f.write("CATEGORIES_TRANSLATIONS = " + json.dumps(custom, indent=4))
+            with open('categories_translation.py', 'w', encoding='utf-8') as f:
+                f.write("CATEGORIES_TRANSLATIONS = " + json.dumps(custom, indent=4, ensure_ascii=False))
 
         return jsonify({"success": True})
 
@@ -435,8 +437,8 @@ def add_category():
             "zh": manual_trans.get("zh", eng_name)
         }
 
-        with open('categories_translation.py', 'w') as f:
-            f.write("CATEGORIES_TRANSLATIONS = " + json.dumps(custom_trans, indent=4))
+        with open('categories_translation.py', 'w', encoding='utf-8') as f:
+            f.write("CATEGORIES_TRANSLATIONS = " + json.dumps(custom_trans, indent=4, ensure_ascii=False))
 
     return jsonify({"success": True, "name": eng_name, "type": category_type})
 

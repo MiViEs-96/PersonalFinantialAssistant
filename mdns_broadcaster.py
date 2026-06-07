@@ -29,7 +29,10 @@ def start_mdns_broadcast(host_name="tumitumi", port=5000):
 
     zeroconf = Zeroconf(ip_version=IPVersion.V4Only)
     print(f"Registrazione servizio mDNS: {host_name}.local ({ip_address}:{port})")
-    zeroconf.register_service(info)
+    try:
+        zeroconf.register_service(info)
+    except Exception as e:
+        print(f"Errore registrazione mDNS (probabile ricaricamento): {e}")
 
     return zeroconf, info
 

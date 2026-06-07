@@ -22,7 +22,7 @@ def process_data_for_charts(transactions):
 
     return {
         'pie_data': [income_total, expense_total],
-        'pie_labels': ['Entrate', 'Uscite'],
+        'pie_labels': ['income', 'expense'], # Use keys for translation
         'income_bar_labels': list(income_by_category.keys()),
         'income_bar_values': list(income_by_category.values()),
         'expense_bar_labels': list(expense_by_category.keys()),
