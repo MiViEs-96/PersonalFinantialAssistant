@@ -1,0 +1,185 @@
+{% extends "base.html" %}
+
+{% block title %}{{ _('home') }}{% endblock %}
+
+{% block content %}
+    <div class="welcome-widget">
+        <div style="text-align: right;">
+            <div>{{ _('welcome') }}, <strong>{{ session['nickname'] }}</strong></div>
+            <a href="{{ url_for('auth.logout') }}" class="logout-link">{{ _('logout') }}</a>
+        </div>
+        <div class="user-avatar">
+            {{ session['nickname'][0] | upper }}
+        </div>
+    </div>
+
+    <div class="finance-layout">
+        <!-- Sidebar with monthly summary -->
+        <div class="finance-sidebar">
+            <div class="content-card">
+                <div style="font-size: 0.9rem; color: var(--primary-color);">{{ _('monthly_summary') }}</div>
+                <div style="font-size: 0.8rem; margin-bottom: 1rem;">({{ _('current_month') }})</div>
+
+                <div style="color: var(--success-color);">{{ _('incomes') }}</div>
+                <div class="summary-val" style="color: var(--success-color);">+ {{ "%.2f"|format(monthly_income) }} €</div>
+
+                <div style="color: #dc3545; margin-top: 1rem;">{{ _('expenses') }}</div>
+                <div class="summary-val" style="color: #dc3545;">- {{ "%.2f"|format(monthly_expense) }} €</div>
+
+                <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 1rem 0;">
+
+                <div style="font-weight: bold;">{{ _('balance') }}</div>
+                <div class="summary-val" style="color: {{ 'var(--success-color)' if monthly_balance >= 0 else '#dc3545' }}; font-weight: bold;">
+                    {{ "+" if monthly_balance > 0 }}{{ "%.2f"|format(monthly_balance) }} €
+                </div>
+            </div>
+
+            <div class="content-card">
+                <div style="font-size: 0.9rem; color: var(--primary-color);">{{ _('previous_month') }}</div>
+                <div class="summary-val" style="margin: 0.5rem 0;">{{ "%.2f"|format(prev_balance) }} €</div>
+
+                <div style="font-size: 0.85rem;">
+                    {{ _('variation') }}:
+                    <span style="color: {{ 'var(--success-color)' if variation >= 0 else '#dc3545' }}; font-weight: 500;">
+                        {{ "+" if variation > 0 }}{{ "%.1f"|format(variation) }}%
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main section with form and table -->
+        <div class="finance-main">
+            <div class="content-card" style="margin-bottom: 2rem;">
+                <h3>{{ _('add_new_transaction') }}</h3>
+                <form action="{{ url_for('add_transaction') }}" method="POST">
+                    <div class="transaction-form-table-wrapper" style="overflow-x: auto;">
+                        <table class="transaction-form-table" id="transaction-table">
+                            <thead>
+                                <tr>
+                                    <th>{{ _('date') }}</th>
+                                    <th>{{ _('amount') }}</th>
+                                    <th>{{ _('currency') }}</th>
+                                    <th>{{ _('type') }}</th>
+                                    <th>{{ _('category') }}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><input type="date" name="date[]" required value="{{ today }}"></td>
+                                    <td><input type="number" step="0.01" name="amount[]" placeholder="0.00" required></td>
+                                    <td>
+                                        <select name="currency[]">
+                                            <option value="EUR">€ (EUR)</option>
+                                            <option value="USD">$ (USD)</option>
+                                        </select>
+                                    </td>
+                                    <td>
+                                        <select name="direction[]" class="direction-select">
+                                            <option value="uscita">{{ _('expense') }}</option>
+                                            <option value="entrata">{{ _('income') }}</option>
+                                        </select>
+                                    </td>
+                                    <td>
+                                        <select name="category[]" class="category-select" required>
+                                            <!-- Dynamic categories -->
+                                        </select>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th colspan="5">{{ _('comment') }}</th>
+                                </tr>
+                                <tr>
+                                    <td colspan="5"><input type="text" name="comment[]" placeholder="{{ _('add_note') }}"></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <button type="button" class="add-row-btn" onclick="addRow()">+</button>
+
+                    <button type="submit">{{ _('add') }}</button>
+                </form>
+            </div>
+
+            <div class="content-card">
+                <h3>{{ _('latest_transactions') }} (5)</h3>
+                <div style="overflow-x: auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>{{ _('date') }}</th>
+                                <th>{{ _('amount') }}</th>
+                                <th>{{ _('type') }}</th>
+                                <th>{{ _('category') }}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for t in transactions %}
+                            <tr style="color: {{ 'var(--success-color)' if t['direction'] == 'entrata' else 'inherit' }}">
+                                <td>{{ t['date'] }}</td>
+                                <td>{{ "%.2f"|format(t['amount']) }} {{ t['currency'] }}</td>
+                                <td>{{ _('income') if t['direction'] == 'entrata' else _('expense') }}</td>
+                                <td>{{ cat_translations.get(t['category'], t['category']) }}</td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="4" style="text-align: center; padding: 2rem;">{{ _('no_transactions') }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Category Modal -->
+    <div id="categoryModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>{{ _('add_category') }}</h3>
+            </div>
+            <div class="form-group">
+                <label>{{ _('type') }}</label>
+                <select id="modal-type">
+                    <option value="expense">{{ _('expense') }}</option>
+                    <option value="income">{{ _('income') }}</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label id="modal-primary-label">{{ _('new_category_name') }}</label>
+                <input type="text" id="modal-name" placeholder="..." onblur="autoTranslate()" style="background: white;">
+            </div>
+            <div id="translation-fields" style="display: none; border: 1px solid var(--border-color); padding: 1rem; border-radius: 8px; margin-bottom: 1rem; background: var(--bg-color);">
+                <div style="font-size: 0.8rem; margin-bottom: 0.5rem; color: var(--primary-color);">{{ _('automatic_translations') }}</div>
+                <div id="trans-group-it" class="form-group" style="margin-bottom: 0.5rem;">
+                    <label style="font-size: 0.7rem;">IT</label>
+                    <input type="text" id="trans-it" style="padding: 0.4rem; font-size: 0.9rem; background: #e9ecef;">
+                </div>
+                <div id="trans-group-en" class="form-group" style="margin-bottom: 0.5rem;">
+                    <label style="font-size: 0.7rem;">EN</label>
+                    <input type="text" id="trans-en" style="padding: 0.4rem; font-size: 0.9rem; background: #e9ecef;">
+                </div>
+                <div id="trans-group-zh" class="form-group" style="margin-bottom: 0.5rem;">
+                    <label style="font-size: 0.7rem;">中文</label>
+                    <input type="text" id="trans-zh" style="padding: 0.4rem; font-size: 0.9rem; background: #e9ecef;">
+                </div>
+            </div>
+            <div id="modal-error" class="error-msg" style="display: none;"></div>
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeModal()">{{ _('cancel') }}</button>
+                <button type="button" id="modal-confirm-btn" onclick="submitCategory()">{{ _('add') }}</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const TXT_OTHER = "{{ _('other') }}";
+        const TXT_ADD = "{{ _('add') }}";
+        const TXT_CONFIRM_ANYWAY = "{{ _('confirm_anyway') }}";
+        const CAT_TRANSLATIONS = {{ cat_translations | tojson | safe }};
+        const CURRENT_LANG = "{{ g.lang }}";
+    </script>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+{% endblock %}

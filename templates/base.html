@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="{{ g.lang }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{% endblock %} - Finanze Personali</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header class="main-nav">
+        <div class="nav-links-container">
+            {% if session['nickname'] %}
+                <a href="{{ url_for('dashboard') }}" class="nav-item {% if request.endpoint == 'dashboard' %}active{% endif %}">{{ _('home') }}</a>
+                <a href="{{ url_for('index') }}" class="nav-item {% if request.endpoint in ['index', 'stats', 'history'] %}active{% endif %}">{{ _('financial_management') }}</a>
+            {% else %}
+                <span class="nav-item active">Finance Assistant</span>
+            {% endif %}
+        </div>
+
+        <div class="nav-controls">
+            <div class="lang-selector">
+                <a href="{{ url_for('set_lang', lang='it') }}" class="lang-btn">IT</a>
+                <a href="{{ url_for('set_lang', lang='en') }}" class="lang-btn">EN</a>
+                <a href="{{ url_for('set_lang', lang='zh') }}" class="lang-btn">中文</a>
+            </div>
+            <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" aria-label="{{ _('change_theme') }}">
+                <span id="theme-icon">🌙</span>
+            </button>
+        </div>
+    </header>
+
+    {% if session['nickname'] and request.endpoint in ['index', 'stats', 'history', 'more_info'] %}
+    <nav class="sub-nav">
+        <a href="{{ url_for('index') }}" class="nav-item {% if request.endpoint == 'index' %}active{% endif %}">{{ _('home') }}</a>
+        <a href="{{ url_for('history') }}" class="nav-item {% if request.endpoint == 'history' %}active{% endif %}">{{ _('history') }}</a>
+        <a href="{{ url_for('stats') }}" class="nav-item {% if request.endpoint == 'stats' %}active{% endif %}">{{ _('stats') }}</a>
+        <a href="{{ url_for('more_info') }}" class="nav-item {% if request.endpoint == 'more_info' %}active{% endif %}">{{ _('more_info') }}</a>
+    </nav>
+    {% endif %}
+
+    <main class="{% block main_class %}container{% endblock %}">
+        {% with messages = get_flashed_messages() %}
+          {% if messages %}
+            <div style="background: rgba(220, 53, 69, 0.1); color: #dc3545; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                {% for message in messages %}
+                  <div>{{ message }}</div>
+                {% endfor %}
+            </div>
+          {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="mobile-footer">
+        <div style="margin-bottom: 1rem; font-weight: bold;">Language / Lingua / 语言</div>
+        <div style="display: flex; justify-content: center; gap: 1.5rem;">
+            <a href="{{ url_for('set_lang', lang='it') }}" class="nav-item">Italiano</a>
+            <a href="{{ url_for('set_lang', lang='en') }}" class="nav-item">English</a>
+            <a href="{{ url_for('set_lang', lang='zh') }}" class="nav-item">中文</a>
+        </div>
+    </footer>
+
+    <script>
+        function updateIcon(theme) {
+            const icon = document.getElementById('theme-icon');
+            if (icon) icon.textContent = theme === 'dark' ? '☀️' : '🌙';
+        }
+
+        function toggleTheme() {
+            const currentTheme = document.documentElement.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            updateIcon(newTheme);
+        }
+
+        const savedTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        document.documentElement.setAttribute('data-theme', savedTheme);
+        updateIcon(savedTheme);
+    </script>
+</body>
+</html>
