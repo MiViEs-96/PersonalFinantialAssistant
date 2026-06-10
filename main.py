@@ -503,26 +503,28 @@ if __name__ == '__main__':
     from database_manager import init_db
     init_db()
     
-    # Flask gira sulla porta 5000 (accesso solo locale).
-    # Nginx fa da proxy sulla porta 80, quindi dall'esterno basta http://tumitumi.local
-    # mDNS viene registrato sulla porta 80 (quella visibile ai client).
+    # Avvio il broadcast mDNS per tumitumi.local
+    # In modalità debug=True Flask avvia due processi, quindi controlliamo se è il processo principale
     import os
     if os.environ.get('WERKZEUG_RUN_MAIN') == 'true' or not app.debug:
-        zc, info = start_mdns_broadcast("tumitumi", 80)
+        zc, info = start_mdns_broadcast("tumitumi", 5000)
     
-    # Flask ascolta solo su localhost: nginx è l'unico punto di ingresso esterno
+    # Host 0.0.0.0 makes it accessible on the local network
     try:
-        app.run(host='127.0.0.1', port=5000, debug=True)
+        app.run(host='0.0.0.0', port=5000, debug=True)
     finally:
         # Improved cleanup to avoid WinError 10038 on Windows
         if 'zc' in locals() and zc:
             try:
+                # We wrap everything in try/except to prevent reload blocking
                 import threading
                 def stop_zc():
                     try:
                         zc.unregister_service(info)
                         zc.close()
                     except: pass
+                
+                # Run cleanup in a separate thread with a timeout to avoid hanging the main process
                 t = threading.Thread(target=stop_zc)
                 t.start()
                 t.join(timeout=2.0)
