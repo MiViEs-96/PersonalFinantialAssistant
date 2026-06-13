@@ -73,12 +73,35 @@ def set_lang(lang):
 def dashboard():
     if 'user_id' not in session:
         return redirect(url_for('auth.login'))
+
+    # Check if balance exists for this user
+    if not database_manager.get_user_first_balance_month(session['nickname']):
+        return redirect(url_for('set_initial_balance'))
+
     return render_template('dashboard.html')
+
+@app.route('/set_initial_balance', methods=['GET', 'POST'])
+def set_initial_balance():
+    if 'user_id' not in session:
+        return redirect(url_for('auth.login'))
+
+    if request.method == 'POST':
+        balance = request.form.get('balance', 0, type=float)
+        from datetime import date
+        current_month = date.today().strftime('%Y-%m')
+        database_manager.set_user_balance(session['nickname'], current_month, balance)
+        return redirect(url_for('dashboard'))
+
+    return render_template('set_balance.html')
 
 @app.route('/finance')
 def index():
     if 'user_id' not in session:
         return redirect(url_for('auth.login'))
+
+    # Check if balance exists
+    if not database_manager.get_user_first_balance_month(session['nickname']):
+        return redirect(url_for('set_initial_balance'))
 
     from datetime import date
     nickname = session['nickname']
@@ -159,15 +182,25 @@ def add_transaction():
 
     for i in range(len(dates)):
         if dates[i] and amounts[i]:
+            amt = float(amounts[i])
+            date_val = dates[i]
+            cat = categories[i]
+            dir_val = directions[i]
+
             database_manager.add_transaction(
-                dates[i],
-                float(amounts[i]),
+                date_val,
+                amt,
                 currencies[i],
-                directions[i],
-                categories[i],
+                dir_val,
+                cat,
                 nickname,
                 comments[i]
             )
+
+            # Update investment summary if applicable
+            if cat.lower() in ['investment', 'investimento']:
+                month = date_val[:7] # YYYY-MM
+                database_manager.update_investment_summary(nickname, month, amt, dir_val)
 
     return redirect(url_for('index'))
 
@@ -402,6 +435,127 @@ def delete_category():
         return jsonify({"success": True})
 
     return jsonify({"error": "Category not found"}), 404
+
+@app.route('/current_balance')
+def current_balance():
+    if 'user_id' not in session:
+        return redirect(url_for('auth.login'))
+
+    nickname = session['nickname']
+    from datetime import date, datetime, timedelta
+    today = date.today()
+    current_month_str = today.strftime('%Y-%m')
+
+    # 1. Get first month and initial balance
+    first_month = database_manager.get_user_first_balance_month(nickname)
+    if not first_month:
+        return redirect(url_for('set_initial_balance'))
+
+    # 2. Get current month data
+    # We need to calculate projections or historical rows (max 5)
+    # The requirement says:
+    # Row 1: Start Money (in bank)
+    # Next Rows: (Current Balance + Prev Month Income - Prev Month Expense)
+
+    # Let's build the list of months from first_month to today (limit 5)
+    first_date = datetime.strptime(first_month, '%Y-%m')
+    months = []
+    curr = first_date
+    while curr <= datetime.combine(today, datetime.min.time()) and len(months) < 5:
+        months.append(curr.strftime('%Y-%m'))
+        # increment month
+        if curr.month == 12:
+            curr = curr.replace(year=curr.year + 1, month=1)
+        else:
+            curr = curr.replace(month=curr.month + 1)
+
+    history_rows = []
+    running_balance = 0
+
+    for i, m in enumerate(months):
+        if i == 0:
+            # First row is the initial balance set by user
+            bal = database_manager.get_user_balance(nickname, m) or 0
+            running_balance = bal
+            history_rows.append({"month": m, "balance": bal})
+        else:
+            # Calculate from previous month's actual data
+            prev_month = months[i-1]
+            start_of_prev = date(datetime.strptime(prev_month, '%Y-%m').year, datetime.strptime(prev_month, '%Y-%m').month, 1).isoformat()
+            # end_of_prev is day before start of current m
+            start_of_curr = date(datetime.strptime(m, '%Y-%m').year, datetime.strptime(m, '%Y-%m').month, 1)
+            end_of_prev = (start_of_curr - timedelta(days=1)).isoformat()
+
+            prev_data = database_manager.get_stats_data(nickname, start_date=start_of_prev, end_date=end_of_prev)
+            p_income = sum(t['amount'] for t in prev_data if t['direction'] == 'entrata')
+            p_expense = sum(t['amount'] for t in prev_data if t['direction'] == 'uscita')
+
+            # (balance corrente + entrate del mese precedente - uscite del mese precedente)
+            # Use running_balance as "balance corrente" of the month we are building?
+            # Or the very first one? Requirement says "current balance" + prev month stats.
+            # Interpreting "current balance" as the cumulative one.
+            running_balance = running_balance + p_income - p_expense
+            history_rows.append({"month": m, "balance": running_balance})
+
+    # 3. Middle Table Data
+    # Nickname, Available Money, Investment
+
+    # Available Money = (running balance of current month) + (current month stats so far)
+    # Wait, the history rows already calculated cumulative balance up to the start of each month.
+    # Let's get current month stats
+    start_of_now = date(today.year, today.month, 1).isoformat()
+    now_data = database_manager.get_stats_data(nickname, start_date=start_of_now)
+    now_income = sum(t['amount'] for t in now_data if t['direction'] == 'entrata')
+    now_expense = sum(t['amount'] for t in now_data if t['direction'] == 'uscita')
+
+    # Calculate current cumulative balance (available now)
+    # It is the balance of the current month row + current delta
+    current_month_row = next((r for r in history_rows if r['month'] == current_month_str), history_rows[-1])
+    available_money = current_month_row['balance'] + now_income - now_expense
+
+    # Investment: sum of all time | Investment Expenses - Investment Incomes |
+    all_transactions = database_manager.get_transactions_by_user(nickname)
+    # Check for "Investment" or "Investimento"
+    inv_category = None
+    with open('categories.json', 'r') as f:
+        all_cats = json.load(f)
+        for ctype in all_cats:
+            for cat in all_cats[ctype]:
+                if cat.lower() in ['investment', 'investimento']:
+                    inv_category = cat
+                    break
+            if inv_category: break
+
+    investment_total = None
+    if inv_category:
+        inv_expenses = sum(t['amount'] for t in all_transactions if t['category'] == inv_category and t['direction'] == 'uscita')
+        inv_incomes = sum(t['amount'] for t in all_transactions if t['category'] == inv_category and t['direction'] == 'entrata')
+        investment_total = abs(inv_expenses - inv_incomes)
+
+    # 4. Chart Data
+    # Balance Trend
+    balance_chart = {
+        "labels": [r['month'] for r in history_rows],
+        "values": [float(r['balance']) for r in history_rows]
+    }
+
+    # Investment Trend
+    inv_summaries = database_manager.get_investment_summaries(nickname)
+    investment_chart = {
+        "labels": [s['month'] for s in inv_summaries],
+        "invested": [s['invested'] for s in inv_summaries],
+        "withdrawn": [s['withdrawn'] for s in inv_summaries]
+    }
+
+    return render_template('current_balance.html',
+                           nickname=nickname,
+                           available_money=available_money,
+                           investment_total=investment_total,
+                           history_rows=history_rows,
+                           balance_chart=balance_chart,
+                           investment_chart=investment_chart,
+                           first_month=first_month,
+                           current_month=current_month_str)
 
 @app.route('/download_csv')
 def download_csv():

@@ -72,7 +72,19 @@ TRANSLATIONS = {
         'category_management': 'Gestione Categorie',
         'show': 'Mostra',
         'usage': 'Utilizzo',
-        'cannot_delete_used_category': 'Non puoi eliminare una categoria usata.'
+        'cannot_delete_used_category': 'Non puoi eliminare una categoria usata.',
+        'how_much_money_now': 'Quanti soldi hai esattamente in questo momento?',
+        'set_initial_balance': 'Imposta Bilancio Iniziale',
+        'current_balance': 'Bilancio Corrente',
+        'available_money': 'Soldi Disponibili',
+        'investment': 'Investimento',
+        'modify_balance': 'Modifica Bilancio',
+        'monthly_history': 'Storico Mensile',
+        'balance_trend': 'Andamento Bilancio',
+        'investment_trend': 'Andamento Investimenti',
+        'invested': 'Investito',
+        'withdrawn': 'Prelevato',
+        'error_no_balance': 'Non hai ancora impostato il tuo bilancio corrente. Per favore, aggiungilo per continuare.'
     },
     'en': {
         'welcome': 'Welcome',
@@ -147,7 +159,19 @@ TRANSLATIONS = {
         'category_management': 'Category Management',
         'show': 'Show',
         'usage': 'Usage',
-        'cannot_delete_used_category': 'Cannot delete a used category.'
+        'cannot_delete_used_category': 'Cannot delete a used category.',
+        'how_much_money_now': 'Exactly how much money do you have right now?',
+        'set_initial_balance': 'Set Initial Balance',
+        'current_balance': 'Current Balance',
+        'available_money': 'Available Money',
+        'investment': 'Investment',
+        'modify_balance': 'Modify Balance',
+        'monthly_history': 'Monthly History',
+        'balance_trend': 'Balance Trend',
+        'investment_trend': 'Investment Trend',
+        'invested': 'Invested',
+        'withdrawn': 'Withdrawn',
+        'error_no_balance': 'You have not set your current balance yet. Please add it to continue.'
     },
     'zh': {
         'welcome': '欢迎',
@@ -222,6 +246,18 @@ TRANSLATIONS = {
         'category_management': '类别管理',
         'show': '显示',
         'usage': '用法',
-        'cannot_delete_used_category': '无法删除已使用的类别。'
+        'cannot_delete_used_category': '无法删除已使用的类别。',
+        'how_much_money_now': '你现在究竟有多少钱？',
+        'set_initial_balance': '设置初始余额',
+        'current_balance': '当前余额',
+        'available_money': '可用资金',
+        'investment': '投资',
+        'modify_balance': '修改余额',
+        'monthly_history': '月度历史',
+        'balance_trend': '余额趋势',
+        'investment_trend': '投资趋势',
+        'invested': '已投资',
+        'withdrawn': '已提取',
+        'error_no_balance': '您尚未设置当前余额。请添加以继续。'
     }
 }

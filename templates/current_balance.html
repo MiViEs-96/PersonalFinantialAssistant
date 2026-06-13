@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+
+{% block title %}{{ _('current_balance') }}{% endblock %}
+
+{% block content %}
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+        <h2>{{ _('current_balance') }}</h2>
+        {% if current_month == first_month %}
+        <a href="{{ url_for('set_initial_balance') }}" class="btn-secondary" style="text-decoration: none; padding: 0.5rem 1rem; border-radius: 8px;">
+            ✏️ {{ _('modify_balance') }}
+        </a>
+        {% endif %}
+    </div>
+
+    <!-- Middle Table: Overview -->
+    <div class="content-card">
+        <table>
+            <thead>
+                <tr>
+                    <th>{{ _('nickname') }}</th>
+                    <th>{{ _('available_money') }}</th>
+                    {% if investment_total is not none %}
+                    <th>{{ _('investment') }}</th>
+                    {% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>{{ nickname }}</strong></td>
+                    <td style="font-size: 1.2rem; color: var(--accent-color); font-weight: bold;">
+                        {{ "%.2f"|format(available_money) }} €
+                    </td>
+                    {% if investment_total is not none %}
+                    <td style="font-size: 1.1rem; color: var(--primary-color);">
+                        {{ "%.2f"|format(investment_total) }} €
+                    </td>
+                    {% endif %}
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="finance-layout" style="grid-template-columns: 1fr 1.5fr;">
+        <!-- Left: 5-Row History -->
+        <div class="col">
+            <div class="content-card">
+                <h3>{{ _('monthly_history') }} (max 5)</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>{{ _('date') }}</th>
+                            <th>{{ _('balance') }}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in history_rows %}
+                        <tr>
+                            <td>{{ row.month }}</td>
+                            <td>{{ "%.2f"|format(row.balance) }} €</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Right: Charts -->
+        <div class="col">
+            <div class="content-card">
+                <h3>{{ _('balance_trend') }}</h3>
+                <canvas id="balanceChart" height="200"></canvas>
+            </div>
+
+            {% if investment_total is not none %}
+            <div class="content-card">
+                <h3>{{ _('investment_trend') }}</h3>
+                <canvas id="investmentChart" height="200"></canvas>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // Balance Trend Chart
+        const balCtx = document.getElementById('balanceChart').getContext('2d');
+        new Chart(balCtx, {
+            type: 'line',
+            data: {
+                labels: {{ balance_chart['labels'] | tojson }},
+                datasets: [{
+                    label: '{{ _("balance") }}',
+                    data: {{ balance_chart['values'] | tojson }},
+                    borderColor: '#007bff',
+                    backgroundColor: 'rgba(0, 123, 255, 0.1)',
+                    fill: true,
+                    tension: 0.3
+                }]
+            },
+            options: { responsive: true, plugins: { legend: { display: false } } }
+        });
+
+        {% if investment_total is not none %}
+        // Investment Trend Chart
+        const invCtx = document.getElementById('investmentChart').getContext('2d');
+        new Chart(invCtx, {
+            type: 'bar',
+            data: {
+                labels: {{ investment_chart['labels'] | tojson }},
+                datasets: [
+                    {
+                        label: '{{ _("invested") }}',
+                        data: {{ investment_chart['invested'] | tojson }},
+                        backgroundColor: '#dc3545'
+                    },
+                    {
+                        label: '{{ _("withdrawn") }}',
+                        data: {{ investment_chart['withdrawn'] | tojson }},
+                        backgroundColor: '#28a745'
+                    }
+                ]
+            },
+            options: { responsive: true }
+        });
+        {% endif %}
+    </script>
+{% endblock %}

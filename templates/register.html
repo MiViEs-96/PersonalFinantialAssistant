@@ -18,6 +18,10 @@
             <label for="password">{{ _('password') }}</label>
             <input type="password" name="password" id="password" required>
         </div>
+        <div class="form-group">
+            <label for="initial_balance">{{ _('how_much_money_now') }}</label>
+            <input type="number" step="0.01" name="initial_balance" id="initial_balance" placeholder="0.00" required>
+        </div>
         <button type="submit" style="width: 100%;">{{ _('register') }}</button>
     </form>
     <p style="margin-top: 1.5rem; font-size: 0.9rem;">
