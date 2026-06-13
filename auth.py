@@ -10,6 +10,7 @@ def register():
         full_name = request.form.get('full_name')
         nickname = request.form.get('nickname')
         password = request.form.get('password')
+        initial_balance = request.form.get('initial_balance', 0, type=float)
 
         if not full_name or not nickname or not password:
             flash('All fields are required.')
@@ -18,6 +19,11 @@ def register():
         hashed_password = generate_password_hash(password)
 
         if database_manager.add_user(full_name, nickname, hashed_password):
+            # Save initial balance for current month
+            from datetime import date
+            current_month = date.today().strftime('%Y-%m')
+            database_manager.set_user_balance(nickname, current_month, initial_balance)
+
             flash('Registration successful! Please login.')
             return redirect(url_for('auth.login'))
         else:
@@ -40,6 +46,15 @@ def login():
             session['user_id'] = user['id']
             session['nickname'] = user['nickname']
             database_manager.update_last_access(user['id'])
+
+            # Check if balance is set
+            from datetime import date
+            current_month = date.today().strftime('%Y-%m')
+            if database_manager.get_user_balance(user['nickname'], current_month) is None:
+                # If no balance for current month, check if ANY balance exists
+                if not database_manager.get_user_first_balance_month(user['nickname']):
+                    return redirect(url_for('set_initial_balance'))
+
             return redirect(url_for('dashboard'))
         else:
             flash('Invalid credentials.')

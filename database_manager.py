@@ -35,6 +35,54 @@ def init_db():
             FOREIGN KEY (nickname) REFERENCES users(nickname)
         )
     ''')
+
+    # Create user_balances table
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS user_balances (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            nickname TEXT NOT NULL,
+            month TEXT NOT NULL, -- YYYY-MM format
+            balance REAL NOT NULL,
+            UNIQUE(nickname, month),
+            FOREIGN KEY (nickname) REFERENCES users(nickname)
+        )
+    ''')
+
+    # Create investment_summaries table
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS investment_summaries (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            nickname TEXT NOT NULL,
+            month TEXT NOT NULL, -- YYYY-MM format
+            invested REAL DEFAULT 0,
+            withdrawn REAL DEFAULT 0,
+            UNIQUE(nickname, month),
+            FOREIGN KEY (nickname) REFERENCES users(nickname)
+        )
+    ''')
+
+    conn.commit()
+
+    # Migration: Populate investment_summaries from existing transactions
+    # To avoid double counting on every restart, we clear and re-populate OR only do it if empty.
+    # Re-populating from scratch ensures consistency if categories were renamed.
+    conn.execute("DELETE FROM investment_summaries")
+
+    transactions = conn.execute("SELECT nickname, date, amount, direction, category FROM transactions").fetchall()
+    for t in transactions:
+        if t['category'].lower() in ['investment', 'investimento']:
+            month = t['date'][:7]
+            if t['direction'] == 'uscita':
+                conn.execute('''
+                    INSERT INTO investment_summaries (nickname, month, invested) VALUES (?, ?, ?)
+                    ON CONFLICT(nickname, month) DO UPDATE SET invested = invested + excluded.invested
+                ''', (t['nickname'], month, t['amount']))
+            else:
+                conn.execute('''
+                    INSERT INTO investment_summaries (nickname, month, withdrawn) VALUES (?, ?, ?)
+                    ON CONFLICT(nickname, month) DO UPDATE SET withdrawn = withdrawn + excluded.withdrawn
+                ''', (t['nickname'], month, t['amount']))
+
     conn.commit()
     conn.close()
 
@@ -94,6 +142,69 @@ def update_user_profile(user_id, old_nickname, new_full_name, new_nickname):
         return False
     finally:
         conn.close()
+
+# --- Balance & Investment Management ---
+
+def set_user_balance(nickname, month, balance):
+    conn = get_db_connection()
+    try:
+        conn.execute('''
+            INSERT INTO user_balances (nickname, month, balance)
+            VALUES (?, ?, ?)
+            ON CONFLICT(nickname, month) DO UPDATE SET balance=excluded.balance
+        ''', (nickname, month, balance))
+        conn.commit()
+        return True
+    except:
+        return False
+    finally:
+        conn.close()
+
+def get_user_balance(nickname, month):
+    conn = get_db_connection()
+    row = conn.execute('SELECT balance FROM user_balances WHERE nickname = ? AND month = ?',
+                       (nickname, month)).fetchone()
+    conn.close()
+    return row['balance'] if row else None
+
+def get_all_user_balances(nickname):
+    conn = get_db_connection()
+    rows = conn.execute('SELECT * FROM user_balances WHERE nickname = ? ORDER BY month ASC',
+                        (nickname,)).fetchall()
+    conn.close()
+    return rows
+
+def get_user_first_balance_month(nickname):
+    conn = get_db_connection()
+    row = conn.execute('SELECT month FROM user_balances WHERE nickname = ? ORDER BY month ASC LIMIT 1',
+                       (nickname,)).fetchone()
+    conn.close()
+    return row['month'] if row else None
+
+def update_investment_summary(nickname, month, amount, direction):
+    # direction: 'entrata' (withdrawn) or 'uscita' (invested)
+    conn = get_db_connection()
+    try:
+        if direction == 'uscita':
+            conn.execute('''
+                INSERT INTO investment_summaries (nickname, month, invested) VALUES (?, ?, ?)
+                ON CONFLICT(nickname, month) DO UPDATE SET invested = invested + excluded.invested
+            ''', (nickname, month, amount))
+        else:
+            conn.execute('''
+                INSERT INTO investment_summaries (nickname, month, withdrawn) VALUES (?, ?, ?)
+                ON CONFLICT(nickname, month) DO UPDATE SET withdrawn = withdrawn + excluded.withdrawn
+            ''', (nickname, month, amount))
+        conn.commit()
+    finally:
+        conn.close()
+
+def get_investment_summaries(nickname):
+    conn = get_db_connection()
+    rows = conn.execute('SELECT * FROM investment_summaries WHERE nickname = ? ORDER BY month ASC',
+                        (nickname,)).fetchall()
+    conn.close()
+    return rows
 
 # --- Transaction Management ---
 

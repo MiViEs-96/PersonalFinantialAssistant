@@ -58,7 +58,7 @@ def inject_translations():
         custom = load_cat_translations()
         if key in custom and lang in custom[key] and custom[key][lang]:
             return custom[key][lang]
-        
+
         # 2. Check in standard translations
         return translations.TRANSLATIONS.get(lang, translations.TRANSLATIONS['it']).get(key, key)
     return dict(_=translate)
@@ -73,27 +73,50 @@ def set_lang(lang):
 def dashboard():
     if 'user_id' not in session:
         return redirect(url_for('auth.login'))
+
+    # Check if balance exists for this user
+    if not database_manager.get_user_first_balance_month(session['nickname']):
+        return redirect(url_for('set_initial_balance'))
+
     return render_template('dashboard.html')
+
+@app.route('/set_initial_balance', methods=['GET', 'POST'])
+def set_initial_balance():
+    if 'user_id' not in session:
+        return redirect(url_for('auth.login'))
+
+    if request.method == 'POST':
+        balance = request.form.get('balance', 0, type=float)
+        from datetime import date
+        current_month = date.today().strftime('%Y-%m')
+        database_manager.set_user_balance(session['nickname'], current_month, balance)
+        return redirect(url_for('dashboard'))
+
+    return render_template('set_balance.html')
 
 @app.route('/finance')
 def index():
     if 'user_id' not in session:
         return redirect(url_for('auth.login'))
-    
+
+    # Check if balance exists
+    if not database_manager.get_user_first_balance_month(session['nickname']):
+        return redirect(url_for('set_initial_balance'))
+
     from datetime import date
     nickname = session['nickname']
-    
+
     # Get monthly stats
     today = date.today()
     start_of_month = date(today.year, today.month, 1).isoformat()
     monthly_data = database_manager.get_stats_data(nickname, start_date=start_of_month)
-    
+
     monthly_income = sum(t['amount'] for t in monthly_data if t['direction'] == 'entrata')
     monthly_expense = sum(t['amount'] for t in monthly_data if t['direction'] == 'uscita')
-    
+
     all_transactions = database_manager.get_transactions_by_user(nickname)
     latest_transactions = all_transactions[:5] # Last 5
-    
+
     # Calculate balance
     monthly_balance = monthly_income - monthly_expense
 
@@ -102,15 +125,15 @@ def index():
     first_of_current = date(today.year, today.month, 1)
     last_of_prev = first_of_current - timedelta(days=1)
     first_of_prev = date(last_of_prev.year, last_of_prev.month, 1)
-    
-    prev_month_data = database_manager.get_stats_data(nickname, 
+
+    prev_month_data = database_manager.get_stats_data(nickname,
                                                      start_date=first_of_prev.isoformat(),
                                                      end_date=last_of_prev.isoformat())
-    
+
     prev_income = sum(t['amount'] for t in prev_month_data if t['direction'] == 'entrata')
     prev_expense = sum(t['amount'] for t in prev_month_data if t['direction'] == 'uscita')
     prev_balance = prev_income - prev_expense
-    
+
     # Calculate variation %
     variation = 0
     if prev_balance != 0:
@@ -120,7 +143,7 @@ def index():
 
     # Build category translations map for JS
     cat_translations = {}
-    
+
     # Load category translations
     custom_cats_trans = load_cat_translations()
 
@@ -134,8 +157,8 @@ def index():
                 else:
                     cat_translations[c] = c
 
-    return render_template('index.html', 
-                           transactions=latest_transactions, 
+    return render_template('index.html',
+                           transactions=latest_transactions,
                            today=today.isoformat(),
                            monthly_income=monthly_income,
                            monthly_expense=monthly_expense,
@@ -148,7 +171,7 @@ def index():
 def add_transaction():
     if 'user_id' not in session:
         return redirect(url_for('auth.login'))
-    
+
     nickname = session['nickname']
     dates = request.form.getlist('date[]')
     amounts = request.form.getlist('amount[]')
@@ -159,33 +182,56 @@ def add_transaction():
 
     for i in range(len(dates)):
         if dates[i] and amounts[i]:
+            amt = float(amounts[i])
+            date_val = dates[i]
+            cat = categories[i]
+            dir_val = directions[i]
+
             database_manager.add_transaction(
-                dates[i], 
-                float(amounts[i]), 
-                currencies[i], 
-                directions[i], 
-                categories[i], 
-                nickname, 
+                date_val,
+                amt,
+                currencies[i],
+                dir_val,
+                cat,
+                nickname,
                 comments[i]
             )
-    
+
+            # Update investment summary if applicable
+            if cat.lower() in ['investment', 'investimento']:
+                month = date_val[:7] # YYYY-MM
+                database_manager.update_investment_summary(nickname, month, amt, dir_val)
+
     return redirect(url_for('index'))
 
 @app.route('/stats')
 def stats():
     if 'user_id' not in session:
         return redirect(url_for('auth.login'))
-    
+
     nickname = session['nickname']
     start_date = request.args.get('start_date')
     end_date = request.args.get('end_date')
-    
+    compare_users = request.args.getlist('compare_users')
+
     transactions = database_manager.get_stats_data(nickname, start_date, end_date)
-    
+
+    for user in compare_users:
+        if user and user != nickname:
+            comp_transactions = database_manager.get_stats_data(user, start_date, end_date)
+            transactions.extend(comp_transactions)
+
     import analytics
     chart_data = analytics.process_data_for_charts(transactions)
-    
-    return render_template('stats.html', chart_data=chart_data, start_date=start_date, end_date=end_date)
+
+    users = database_manager.get_all_users()
+
+    return render_template('stats.html',
+                           chart_data=chart_data,
+                           start_date=start_date,
+                           end_date=end_date,
+                           users=users,
+                           compare_users=compare_users)
 
 @app.route('/api/categories')
 def get_categories():
@@ -201,31 +247,39 @@ def translate_category_api():
     source_lang = data.get('source_lang', 'it')
     if not name:
         return jsonify({"error": "No name"}), 400
-    
+
     translator = Translator()
     try:
         import asyncio
-        
-        def run_translate(text, src, dest):
-            res = translator.translate(text, src=src, dest=dest)
-            if hasattr(res, '__await__'):
-                # Handle async return in a sync context
-                try:
-                    loop = asyncio.get_event_loop()
-                except RuntimeError:
-                    loop = asyncio.new_event_loop()
-                    asyncio.set_event_loop(loop)
-                return loop.run_until_complete(res)
-            return res
 
-        it_res = run_translate(name, source_lang, 'it')
-        en_res = run_translate(name, source_lang, 'en')
-        zh_res = run_translate(name, source_lang, 'zh-cn')
-        
+        def run_translate(text, src, dest):
+            try:
+                res = translator.translate(text, src=src, dest=dest)
+                if hasattr(res, '__await__'):
+                    # Handle async return in a sync context
+                    try:
+                        loop = asyncio.get_event_loop()
+                    except RuntimeError:
+                        loop = asyncio.new_event_loop()
+                        asyncio.set_event_loop(loop)
+                    res = loop.run_until_complete(res)
+
+                # Check for empty text in result
+                if not res or not res.text:
+                    return text # Fallback
+                return res.text
+            except Exception as e:
+                print(f"Sub-translation error: {e}")
+                return text # Fallback
+
+        it_text = run_translate(name, source_lang, 'it')
+        en_text = run_translate(name, source_lang, 'en')
+        zh_text = run_translate(name, source_lang, 'zh-cn')
+
         return jsonify({
-            "it": it_res.text,
-            "en": en_res.text,
-            "zh": zh_res.text
+            "it": it_text,
+            "en": en_text,
+            "zh": zh_text
         })
     except Exception as e:
         print(f"Translation error: {e}")
@@ -239,7 +293,7 @@ def translate_category_api():
 def history():
     if 'user_id' not in session:
         return redirect(url_for('auth.login'))
-    
+
     nickname = session['nickname']
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 10, type=int)
@@ -247,18 +301,18 @@ def history():
     end_date = request.args.get('end_date')
     direction = request.args.get('direction')
     category = request.args.get('category')
-    
+
     transactions, total_count = database_manager.get_paginated_transactions(
         nickname, page, per_page, start_date, end_date, direction, category
     )
-    
+
     import math
     total_pages = math.ceil(total_count / per_page)
-    
+
     # Load all categories for the filter
     with open('categories.json', 'r') as f:
         all_cats_data = json.load(f)
-    
+
     all_cats = sorted(list(set(all_cats_data['income'] + all_cats_data['expense'])))
 
     # Category translations for display
@@ -291,15 +345,19 @@ def history():
 def more_info():
     if 'user_id' not in session:
         return redirect(url_for('auth.login'))
-    
+
+    # Get all users for the list
     users = database_manager.get_all_users()
-    
+
+    # Fetch current user explicitly to avoid Jinja filter issues
+    current_user = database_manager.get_user_by_nickname(session['nickname'])
+
     # Get category usage
     usage_counts = database_manager.get_category_usage_counts()
-    
+
     with open('categories.json', 'r') as f:
         categories_data = json.load(f)
-    
+
     # Load custom translations for display
     custom_trans = load_cat_translations(force_reload=True)
 
@@ -309,18 +367,19 @@ def more_info():
         for cat in categories_data[ctype]:
             db_dir = 'entrata' if ctype == 'income' else 'uscita'
             count = usage_counts.get((cat, db_dir), 0)
-            
+
             # Robust Translation Logic
             display_name = ""
-            
+
             # 1. Check category-specific translations
             if cat in custom_trans:
                 display_name = custom_trans[cat].get(g.lang, "")
-            
-            # 2. Check general translations
+
+            # 2. Check general translations (fallback to translations.py)
             if not display_name:
-                display_name = translations.TRANSLATIONS.get(g.lang, {}).get(cat.lower(), "")
-            
+                lang_dict = translations.TRANSLATIONS.get(g.lang, translations.TRANSLATIONS['it'])
+                display_name = lang_dict.get(cat.lower(), "")
+
             # 3. Fallback to name (Ensure it's not empty)
             if not display_name:
                 display_name = cat
@@ -331,11 +390,8 @@ def more_info():
                 "count": count
             })
 
-    # Identify current user for profile management
-    current_user = next((u for u in users if u['nickname'] == session['nickname']), None)
-
-    return render_template('more_info.html', 
-                           users=users, 
+    return render_template('more_info.html',
+                           users=users,
                            current_user=current_user,
                            cat_details=cat_details)
 
@@ -343,12 +399,12 @@ def more_info():
 def update_profile():
     if 'user_id' not in session:
         return redirect(url_for('auth.login'))
-    
+
     user_id = session['user_id']
     old_nickname = session['nickname']
     new_full_name = request.form.get('full_name')
     new_nickname = request.form.get('nickname')
-    
+
     if database_manager.update_user_profile(user_id, old_nickname, new_full_name, new_nickname):
         session['nickname'] = new_nickname
         return redirect(url_for('more_info'))
@@ -360,11 +416,11 @@ def update_profile():
 def delete_category():
     if 'user_id' not in session:
         return jsonify({"error": "Unauthorized"}), 401
-    
+
     data = request.get_json()
     cat_name = data.get('name')
     cat_type = data.get('type') # 'income' or 'expense'
-    
+
     if not cat_name or not cat_type:
         return jsonify({"error": "Missing data"}), 400
 
@@ -377,12 +433,12 @@ def delete_category():
     # Delete from categories.json
     with open('categories.json', 'r') as f:
         categories = json.load(f)
-    
+
     if cat_name in categories[cat_type]:
         categories[cat_type].remove(cat_name)
         with open('categories.json', 'w') as f:
             json.dump(categories, f, indent=4)
-        
+
         # Delete from categories_translation.json too
         custom = load_cat_translations()
         if cat_name in custom:
@@ -390,26 +446,174 @@ def delete_category():
             save_cat_translations(custom)
 
         return jsonify({"success": True})
-    
+
     return jsonify({"error": "Category not found"}), 404
+
+@app.route('/current_balance')
+def current_balance():
+    if 'user_id' not in session:
+        return redirect(url_for('auth.login'))
+
+    nickname = session['nickname']
+    compare_users = request.args.getlist('compare_users')
+    # Filter out current user and invalid ones
+    compare_users = [u for u in compare_users if u and u != nickname]
+    is_joint = len(compare_users) > 0
+
+    from datetime import date, datetime, timedelta
+    today = date.today()
+    current_month_str = today.strftime('%Y-%m')
+
+    # 1. Get first month and initial balance
+    first_month = database_manager.get_user_first_balance_month(nickname)
+    if not first_month:
+        return redirect(url_for('set_initial_balance'))
+
+    for u in compare_users:
+        comp_first = database_manager.get_user_first_balance_month(u)
+        if comp_first and (not first_month or comp_first < first_month):
+            first_month = comp_first
+
+    # 2. Get history rows
+    first_date = datetime.strptime(first_month, '%Y-%m')
+    months = []
+    curr = first_date
+    while curr <= datetime.combine(today, datetime.min.time()) and len(months) < 5:
+        months.append(curr.strftime('%Y-%m'))
+        if curr.month == 12:
+            curr = curr.replace(year=curr.year + 1, month=1)
+        else:
+            curr = curr.replace(month=curr.month + 1)
+
+    history_rows = []
+    running_balance = 0
+
+    for i, m in enumerate(months):
+        if i == 0:
+            bal_total = database_manager.get_user_balance(nickname, m) or 0
+            for u in compare_users:
+                bal_total += (database_manager.get_user_balance(u, m) or 0)
+            running_balance = bal_total
+            history_rows.append({"month": m, "balance": running_balance})
+        else:
+            prev_month = months[i-1]
+            start_of_prev = date(datetime.strptime(prev_month, '%Y-%m').year, datetime.strptime(prev_month, '%Y-%m').month, 1).isoformat()
+            start_of_curr = date(datetime.strptime(m, '%Y-%m').year, datetime.strptime(m, '%Y-%m').month, 1)
+            end_of_prev = (start_of_curr - timedelta(days=1)).isoformat()
+
+            data_combined = database_manager.get_stats_data(nickname, start_date=start_of_prev, end_date=end_of_prev)
+            inc_total = sum(t['amount'] for t in data_combined if t['direction'] == 'entrata')
+            exp_total = sum(t['amount'] for t in data_combined if t['direction'] == 'uscita')
+
+            for u in compare_users:
+                u_data = database_manager.get_stats_data(u, start_date=start_of_prev, end_date=end_of_prev)
+                inc_total += sum(t['amount'] for t in u_data if t['direction'] == 'entrata')
+                exp_total += sum(t['amount'] for t in u_data if t['direction'] == 'uscita')
+
+            # Initial balance for users who start later
+            for u in compare_users:
+                comp_start = database_manager.get_user_first_balance_month(u)
+                if comp_start == m:
+                    running_balance += (database_manager.get_user_balance(u, m) or 0)
+
+            running_balance = running_balance + inc_total - exp_total
+            history_rows.append({"month": m, "balance": running_balance})
+
+    # 3. Middle Table Data
+    start_of_now = date(today.year, today.month, 1).isoformat()
+    now_data1 = database_manager.get_stats_data(nickname, start_date=start_of_now)
+    now_inc = sum(t['amount'] for t in now_data1 if t['direction'] == 'entrata')
+    now_exp = sum(t['amount'] for t in now_data1 if t['direction'] == 'uscita')
+
+    for u in compare_users:
+        now_data2 = database_manager.get_stats_data(u, start_date=start_of_now)
+        now_inc += sum(t['amount'] for t in now_data2 if t['direction'] == 'entrata')
+        now_exp += sum(t['amount'] for t in now_data2 if t['direction'] == 'uscita')
+
+    current_month_row = next((r for r in history_rows if r['month'] == current_month_str), history_rows[-1])
+    available_money = current_month_row['balance'] + now_inc - now_exp
+
+    # Investment
+    def get_user_inv(nick):
+        trans = database_manager.get_transactions_by_user(nick)
+        inv_cat = None
+        with open('categories.json', 'r') as f:
+            all_cats = json.load(f)
+            for ctype in all_cats:
+                for cat in all_cats[ctype]:
+                    if cat.lower() in ['investment', 'investimento']:
+                        inv_cat = cat; break
+                if inv_cat: break
+        if not inv_cat: return 0
+        exp = sum(t['amount'] for t in trans if t['category'] == inv_cat and t['direction'] == 'uscita')
+        inc = sum(t['amount'] for t in trans if t['category'] == inv_cat and t['direction'] == 'entrata')
+        return abs(exp - inc)
+
+    investment_total = get_user_inv(nickname)
+    for u in compare_users:
+        investment_total += get_user_inv(u)
+
+    # 4. Chart Data
+    balance_chart = {
+        "labels": [r['month'] for r in history_rows],
+        "values": [float(r['balance']) for r in history_rows]
+    }
+
+    # Investment Trend (Multi-User)
+    inv_summaries1 = database_manager.get_investment_summaries(nickname)
+    inv_dict = {s['month']: {'inv': s['invested'], 'with': s['withdrawn']} for s in inv_summaries1}
+
+    for u in compare_users:
+        inv_summaries2 = database_manager.get_investment_summaries(u)
+        for s in inv_summaries2:
+            m = s['month']
+            if m not in inv_dict:
+                inv_dict[m] = {'inv': 0, 'with': 0}
+            inv_dict[m]['inv'] += s['invested']
+            inv_dict[m]['with'] += s['withdrawn']
+
+    sorted_months = sorted(inv_dict.keys())
+    investment_chart = {
+        "labels": sorted_months,
+        "invested": [inv_dict[m]['inv'] for m in sorted_months],
+        "withdrawn": [inv_dict[m]['with'] for m in sorted_months]
+    }
+
+    users = database_manager.get_all_users()
+    nick_display = nickname
+    if is_joint:
+        nick_display = nickname + " + " + ", ".join(compare_users)
+
+    return render_template('current_balance.html',
+                           nickname=nick_display,
+                           available_money=available_money,
+                           investment_total=investment_total,
+                           history_rows=history_rows,
+                           balance_chart=balance_chart,
+                           investment_chart=investment_chart,
+                           first_month=first_month,
+                           current_month=current_month_str,
+                           users=users,
+                           compare_users=compare_users,
+                           is_joint=is_joint)
 
 @app.route('/download_csv')
 def download_csv():
     if 'user_id' not in session:
         return redirect(url_for('auth.login'))
-    
+
     nickname = session['nickname']
     transactions = database_manager.get_transactions_by_user(nickname)
-    
+
     output = io.StringIO()
     writer = csv.writer(output)
-    
+
     # Header
     writer.writerow(['ID', 'Date', 'Amount', 'Currency', 'Type', 'Category', 'Comment'])
-    
+
     for t in transactions:
         writer.writerow([t['id'], t['date'], t['amount'], t['currency'], t['direction'], t['category'], t['comment']])
-    
+
     response = make_response(output.getvalue())
     response.headers["Content-Disposition"] = f"attachment; filename=transactions_{nickname}.csv"
     response.headers["Content-type"] = "text/csv"
@@ -419,28 +623,28 @@ def download_csv():
 def add_category():
     if 'user_id' not in session:
         return jsonify({"error": "Unauthorized"}), 401
-    
+
     data = request.get_json()
     # 'name' here is now the English translation from the JS
     new_name_raw = data.get('name', '').strip().capitalize()
     category_type = data.get('type', 'expense').lower()
     force = data.get('force', False)
     manual_trans = data.get('translations') # {it, en, zh}
-    
+
     if not new_name_raw:
         return jsonify({"error": "Empty name"}), 400
 
     # Load existing categories
     with open('categories.json', 'r') as f:
         categories = json.load(f)
-    
+
     target_list = categories.get(category_type, [])
-    
+
     # 1. Check for translations (Case-insensitive)
     # We want to save the English version if it matches a known translation in ANY language
     eng_name = new_name_raw
     found_in_translations = False
-    
+
     for lang in translations.TRANSLATIONS:
         for key, val in translations.TRANSLATIONS[lang].items():
             if val.lower() == new_name_raw.lower():
@@ -454,7 +658,7 @@ def add_category():
     # 2. Duplicate Check
     if any(c.lower() == eng_name.lower() for c in target_list):
         return jsonify({
-            "error": "duplicate", 
+            "error": "duplicate",
             "message": translations.TRANSLATIONS[g.lang]['category_exists'].format(name=eng_name)
         }), 409
 
@@ -478,24 +682,24 @@ def add_category():
     categories[category_type] = target_list
     with open('categories.json', 'w') as f:
         json.dump(categories, f, indent=4)
-    
+
     # 5. Save Custom Translations
     if manual_trans:
         custom_trans = load_cat_translations(force_reload=True)
-        
+
         # Ensure values are not empty, fallback to eng_name
         it_val = manual_trans.get("it") or eng_name
         en_val = manual_trans.get("en") or eng_name
         zh_val = manual_trans.get("zh") or eng_name
-        
+
         custom_trans[eng_name] = {
             "it": it_val,
             "en": en_val,
             "zh": zh_val
         }
-        
+
         save_cat_translations(custom_trans)
-        
+
     return jsonify({"success": True, "name": eng_name, "type": category_type})
 
 if __name__ == '__main__':

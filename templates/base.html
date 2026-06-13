@@ -29,9 +29,10 @@
         </div>
     </header>
 
-    {% if session['nickname'] and request.endpoint in ['index', 'stats', 'history', 'more_info'] %}
+    {% if session['nickname'] and request.endpoint in ['index', 'stats', 'history', 'more_info', 'current_balance'] %}
     <nav class="sub-nav">
         <a href="{{ url_for('index') }}" class="nav-item {% if request.endpoint == 'index' %}active{% endif %}">{{ _('home') }}</a>
+        <a href="{{ url_for('current_balance') }}" class="nav-item {% if request.endpoint == 'current_balance' %}active{% endif %}">{{ _('current_balance') }}</a>
         <a href="{{ url_for('history') }}" class="nav-item {% if request.endpoint == 'history' %}active{% endif %}">{{ _('history') }}</a>
         <a href="{{ url_for('stats') }}" class="nav-item {% if request.endpoint == 'stats' %}active{% endif %}">{{ _('stats') }}</a>
         <a href="{{ url_for('more_info') }}" class="nav-item {% if request.endpoint == 'more_info' %}active{% endif %}">{{ _('more_info') }}</a>

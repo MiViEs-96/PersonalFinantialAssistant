@@ -23,10 +23,10 @@
                 <div style="font-size: 1.2rem; font-weight: bold; color: var(--accent-color);">{{ _('financial_management') }}</div>
             </a>
 
-            <div style="padding: 2rem; border: 1px solid var(--border-color); border-radius: 12px; background: var(--bg-color); opacity: 0.5; width: 250px; text-align: center;">
-                <div style="font-size: 3rem; margin-bottom: 1rem;">🔒</div>
-                <div style="font-size: 1.2rem; font-weight: bold;">Coming Soon</div>
-            </div>
+            <a href="{{ url_for('current_balance') }}" class="nav-item" style="padding: 2rem; border: 1px solid var(--border-color); border-radius: 12px; background: var(--bg-color); width: 250px; text-align: center; transition: transform 0.2s;">
+                <div style="font-size: 3rem; margin-bottom: 1rem;">🏦</div>
+                <div style="font-size: 1.2rem; font-weight: bold; color: var(--accent-color);">{{ _('current_balance') }}</div>
+            </a>
         </div>
     </div>
 {% endblock %}
