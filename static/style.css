@@ -371,3 +371,25 @@ input[type="text"], input[type="password"], input[type="number"], input[type="da
     font-size: 0.9rem;
     margin-top: 1rem;
 }
+
+.user-selector-card {
+    padding: 1.2rem;
+    border-radius: 12px;
+    background-color: var(--card-bg);
+    border: 1px solid var(--border-color);
+}
+
+.user-selector-card h3 {
+    margin-top: 0;
+    font-size: 1.1rem;
+    color: var(--accent-color);
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+@media (max-width: 768px) {
+    .finance-layout {
+        grid-template-columns: 1fr !important;
+    }
+}

@@ -3,23 +3,17 @@
 {% block title %}{{ _('current_balance') }}{% endblock %}
 
 {% block content %}
+    <div class="finance-layout" style="grid-template-columns: 200px 1fr;">
+        <!-- Left: User Selector -->
+        <div class="col">
+            {% include '_user_selector.html' %}
+        </div>
+
+        <!-- Right: Content -->
+        <div class="col">
     <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
         <div>
             <h2>{{ _('current_balance') }} {% if is_joint %}({{ _('joint_view') }}){% endif %}</h2>
-
-            <form method="GET" style="display: flex; gap: 0.5rem; align-items: center; margin-top: 0.5rem;">
-                <label for="compare_user" style="font-size: 0.8rem; margin: 0;">{{ _('compare_with') }}:</label>
-                <select name="compare_user" id="compare_user" onchange="this.form.submit()" style="padding: 0.3rem; font-size: 0.8rem; width: auto;">
-                    <option value="none">{{ _('none') }}</option>
-                    {% for user in users %}
-                        {% if user.nickname != session['nickname'] %}
-                            <option value="{{ user.nickname }}" {% if compare_user == user.nickname %}selected{% endif %}>
-                                {{ user.nickname }}
-                            </option>
-                        {% endif %}
-                    {% endfor %}
-                </select>
-            </form>
         </div>
 
         {% if current_month == first_month and not is_joint %}
@@ -98,6 +92,9 @@
     </div>
 
     <!-- Chart.js -->
+    </div> <!-- Close col -->
+    </div> <!-- Close finance-layout -->
+
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
         // Balance Trend Chart

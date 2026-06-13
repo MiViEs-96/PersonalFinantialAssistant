@@ -212,13 +212,14 @@ def stats():
     nickname = session['nickname']
     start_date = request.args.get('start_date')
     end_date = request.args.get('end_date')
-    compare_user = request.args.get('compare_user')
+    compare_users = request.args.getlist('compare_users')
 
     transactions = database_manager.get_stats_data(nickname, start_date, end_date)
 
-    if compare_user and compare_user != 'none' and compare_user != nickname:
-        comp_transactions = database_manager.get_stats_data(compare_user, start_date, end_date)
-        transactions.extend(comp_transactions)
+    for user in compare_users:
+        if user and user != nickname:
+            comp_transactions = database_manager.get_stats_data(user, start_date, end_date)
+            transactions.extend(comp_transactions)
 
     import analytics
     chart_data = analytics.process_data_for_charts(transactions)
@@ -230,7 +231,7 @@ def stats():
                            start_date=start_date,
                            end_date=end_date,
                            users=users,
-                           compare_user=compare_user)
+                           compare_users=compare_users)
 
 @app.route('/api/categories')
 def get_categories():
@@ -454,8 +455,10 @@ def current_balance():
         return redirect(url_for('auth.login'))
 
     nickname = session['nickname']
-    compare_user = request.args.get('compare_user')
-    is_joint = compare_user and compare_user != 'none' and compare_user != nickname
+    compare_users = request.args.getlist('compare_users')
+    # Filter out current user and invalid ones
+    compare_users = [u for u in compare_users if u and u != nickname]
+    is_joint = len(compare_users) > 0
 
     from datetime import date, datetime, timedelta
     today = date.today()
@@ -466,9 +469,9 @@ def current_balance():
     if not first_month:
         return redirect(url_for('set_initial_balance'))
 
-    if is_joint:
-        comp_first = database_manager.get_user_first_balance_month(compare_user)
-        if comp_first and comp_first < first_month:
+    for u in compare_users:
+        comp_first = database_manager.get_user_first_balance_month(u)
+        if comp_first and (not first_month or comp_first < first_month):
             first_month = comp_first
 
     # 2. Get history rows
@@ -486,14 +489,11 @@ def current_balance():
     running_balance = 0
 
     for i, m in enumerate(months):
-        # Initial balance for this month (if any user set it specifically)
-        # OR just use the first month logic
         if i == 0:
-            bal1 = database_manager.get_user_balance(nickname, m) or 0
-            bal2 = 0
-            if is_joint:
-                bal2 = database_manager.get_user_balance(compare_user, m) or 0
-            running_balance = bal1 + bal2
+            bal_total = database_manager.get_user_balance(nickname, m) or 0
+            for u in compare_users:
+                bal_total += (database_manager.get_user_balance(u, m) or 0)
+            running_balance = bal_total
             history_rows.append({"month": m, "balance": running_balance})
         else:
             prev_month = months[i-1]
@@ -501,40 +501,37 @@ def current_balance():
             start_of_curr = date(datetime.strptime(m, '%Y-%m').year, datetime.strptime(m, '%Y-%m').month, 1)
             end_of_prev = (start_of_curr - timedelta(days=1)).isoformat()
 
-            data1 = database_manager.get_stats_data(nickname, start_date=start_of_prev, end_date=end_of_prev)
-            inc1 = sum(t['amount'] for t in data1 if t['direction'] == 'entrata')
-            exp1 = sum(t['amount'] for t in data1 if t['direction'] == 'uscita')
+            data_combined = database_manager.get_stats_data(nickname, start_date=start_of_prev, end_date=end_of_prev)
+            inc_total = sum(t['amount'] for t in data_combined if t['direction'] == 'entrata')
+            exp_total = sum(t['amount'] for t in data_combined if t['direction'] == 'uscita')
 
-            inc2, exp2 = 0, 0
-            if is_joint:
-                data2 = database_manager.get_stats_data(compare_user, start_date=start_of_prev, end_date=end_of_prev)
-                inc2 = sum(t['amount'] for t in data2 if t['direction'] == 'entrata')
-                exp2 = sum(t['amount'] for t in data2 if t['direction'] == 'uscita')
+            for u in compare_users:
+                u_data = database_manager.get_stats_data(u, start_date=start_of_prev, end_date=end_of_prev)
+                inc_total += sum(t['amount'] for t in u_data if t['direction'] == 'entrata')
+                exp_total += sum(t['amount'] for t in u_data if t['direction'] == 'uscita')
 
-            # Special case: if another user starts their tracking later than 'first_month',
-            # we should add their initial balance in the month they joined.
-            if is_joint:
-                comp_start = database_manager.get_user_first_balance_month(compare_user)
+            # Initial balance for users who start later
+            for u in compare_users:
+                comp_start = database_manager.get_user_first_balance_month(u)
                 if comp_start == m:
-                    running_balance += (database_manager.get_user_balance(compare_user, m) or 0)
+                    running_balance += (database_manager.get_user_balance(u, m) or 0)
 
-            running_balance = running_balance + (inc1 + inc2) - (exp1 + exp2)
+            running_balance = running_balance + inc_total - exp_total
             history_rows.append({"month": m, "balance": running_balance})
 
     # 3. Middle Table Data
     start_of_now = date(today.year, today.month, 1).isoformat()
     now_data1 = database_manager.get_stats_data(nickname, start_date=start_of_now)
-    now_inc1 = sum(t['amount'] for t in now_data1 if t['direction'] == 'entrata')
-    now_exp1 = sum(t['amount'] for t in now_data1 if t['direction'] == 'uscita')
+    now_inc = sum(t['amount'] for t in now_data1 if t['direction'] == 'entrata')
+    now_exp = sum(t['amount'] for t in now_data1 if t['direction'] == 'uscita')
 
-    now_inc2, now_exp2 = 0, 0
-    if is_joint:
-        now_data2 = database_manager.get_stats_data(compare_user, start_date=start_of_now)
-        now_inc2 = sum(t['amount'] for t in now_data2 if t['direction'] == 'entrata')
-        now_exp2 = sum(t['amount'] for t in now_data2 if t['direction'] == 'uscita')
+    for u in compare_users:
+        now_data2 = database_manager.get_stats_data(u, start_date=start_of_now)
+        now_inc += sum(t['amount'] for t in now_data2 if t['direction'] == 'entrata')
+        now_exp += sum(t['amount'] for t in now_data2 if t['direction'] == 'uscita')
 
     current_month_row = next((r for r in history_rows if r['month'] == current_month_str), history_rows[-1])
-    available_money = current_month_row['balance'] + (now_inc1 + now_inc2) - (now_exp1 + now_exp2)
+    available_money = current_month_row['balance'] + now_inc - now_exp
 
     # Investment
     def get_user_inv(nick):
@@ -553,8 +550,8 @@ def current_balance():
         return abs(exp - inc)
 
     investment_total = get_user_inv(nickname)
-    if is_joint:
-        investment_total += get_user_inv(compare_user)
+    for u in compare_users:
+        investment_total += get_user_inv(u)
 
     # 4. Chart Data
     balance_chart = {
@@ -562,12 +559,12 @@ def current_balance():
         "values": [float(r['balance']) for r in history_rows]
     }
 
-    # Investment Trend (Joint)
+    # Investment Trend (Multi-User)
     inv_summaries1 = database_manager.get_investment_summaries(nickname)
     inv_dict = {s['month']: {'inv': s['invested'], 'with': s['withdrawn']} for s in inv_summaries1}
 
-    if is_joint:
-        inv_summaries2 = database_manager.get_investment_summaries(compare_user)
+    for u in compare_users:
+        inv_summaries2 = database_manager.get_investment_summaries(u)
         for s in inv_summaries2:
             m = s['month']
             if m not in inv_dict:
@@ -583,9 +580,12 @@ def current_balance():
     }
 
     users = database_manager.get_all_users()
+    nick_display = nickname
+    if is_joint:
+        nick_display = nickname + " + " + ", ".join(compare_users)
 
     return render_template('current_balance.html',
-                           nickname=nickname if not is_joint else f"{nickname} + {compare_user}",
+                           nickname=nick_display,
                            available_money=available_money,
                            investment_total=investment_total,
                            history_rows=history_rows,
@@ -594,7 +594,7 @@ def current_balance():
                            first_month=first_month,
                            current_month=current_month_str,
                            users=users,
-                           compare_user=compare_user,
+                           compare_users=compare_users,
                            is_joint=is_joint)
 
 @app.route('/download_csv')

@@ -89,7 +89,8 @@ TRANSLATIONS = {
         'none': 'Nessuno',
         'joint_view': 'Vista Comune',
         'combined_balance': 'Saldo Combinato',
-        'total_available': 'Totale Disponibile'
+        'total_available': 'Totale Disponibile',
+        'select_users': 'Seleziona Utenti'
     },
     'en': {
         'welcome': 'Welcome',
@@ -181,7 +182,8 @@ TRANSLATIONS = {
         'none': 'None',
         'joint_view': 'Joint View',
         'combined_balance': 'Combined Balance',
-        'total_available': 'Total Available'
+        'total_available': 'Total Available',
+        'select_users': 'Select Users'
     },
     'zh': {
         'welcome': '欢迎',
@@ -273,6 +275,7 @@ TRANSLATIONS = {
         'none': '无',
         'joint_view': '联合视图',
         'combined_balance': '综合余额',
-        'total_available': '可用总额'
+        'total_available': '可用总额',
+        'select_users': '选择用户'
     }
 }

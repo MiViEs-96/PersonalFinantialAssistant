@@ -1,0 +1,21 @@
+<div class="content-card user-selector-card" style="position: sticky; top: 80px;">
+    <h3>{{ _('select_users') }}</h3>
+    <form id="user-selector-form" method="GET">
+        <!-- Preserve other GET params like dates -->
+        {% if start_date %}<input type="hidden" name="start_date" value="{{ start_date }}">{% endif %}
+        {% if end_date %}<input type="hidden" name="end_date" value="{{ end_date }}">{% endif %}
+
+        <div style="display: flex; flex-direction: column; gap: 0.8rem; margin-top: 1rem;">
+            {% for user in users %}
+                {% if user.nickname != session['nickname'] %}
+                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; text-align: left; font-size: 0.9rem;">
+                    <input type="checkbox" name="compare_users" value="{{ user.nickname }}"
+                           {% if user.nickname in compare_users %}checked{% endif %}
+                           onchange="this.form.submit()">
+                    <span>{{ user.nickname }}</span>
+                </label>
+                {% endif %}
+            {% endfor %}
+        </div>
+    </form>
+</div>
