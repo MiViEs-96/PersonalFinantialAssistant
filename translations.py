@@ -84,7 +84,12 @@ TRANSLATIONS = {
         'investment_trend': 'Andamento Investimenti',
         'invested': 'Investito',
         'withdrawn': 'Prelevato',
-        'error_no_balance': 'Non hai ancora impostato il tuo bilancio corrente. Per favore, aggiungilo per continuare.'
+        'error_no_balance': 'Non hai ancora impostato il tuo bilancio corrente. Per favore, aggiungilo per continuare.',
+        'compare_with': 'Confronta con',
+        'none': 'Nessuno',
+        'joint_view': 'Vista Comune',
+        'combined_balance': 'Saldo Combinato',
+        'total_available': 'Totale Disponibile'
     },
     'en': {
         'welcome': 'Welcome',
@@ -171,7 +176,12 @@ TRANSLATIONS = {
         'investment_trend': 'Investment Trend',
         'invested': 'Invested',
         'withdrawn': 'Withdrawn',
-        'error_no_balance': 'You have not set your current balance yet. Please add it to continue.'
+        'error_no_balance': 'You have not set your current balance yet. Please add it to continue.',
+        'compare_with': 'Compare with',
+        'none': 'None',
+        'joint_view': 'Joint View',
+        'combined_balance': 'Combined Balance',
+        'total_available': 'Total Available'
     },
     'zh': {
         'welcome': '欢迎',
@@ -258,6 +268,11 @@ TRANSLATIONS = {
         'investment_trend': '投资趋势',
         'invested': '已投资',
         'withdrawn': '已提取',
-        'error_no_balance': '您尚未设置当前余额。请添加以继续。'
+        'error_no_balance': '您尚未设置当前余额。请添加以继续。',
+        'compare_with': '与...对比',
+        'none': '无',
+        'joint_view': '联合视图',
+        'combined_balance': '综合余额',
+        'total_available': '可用总额'
     }
 }

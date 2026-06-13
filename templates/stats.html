@@ -25,6 +25,19 @@
                 <label for="end_date">{{ _('to') }}:</label>
                 <input type="date" name="end_date" id="end_date" value="{{ end_date }}">
             </div>
+            <div class="form-group" style="margin-bottom: 0;">
+                <label for="compare_user">{{ _('compare_with') }}:</label>
+                <select name="compare_user" id="compare_user">
+                    <option value="none">{{ _('none') }}</option>
+                    {% for user in users %}
+                        {% if user.nickname != session['nickname'] %}
+                            <option value="{{ user.nickname }}" {% if compare_user == user.nickname %}selected{% endif %}>
+                                {{ user.nickname }} ({{ user.full_name }})
+                            </option>
+                        {% endif %}
+                    {% endfor %}
+                </select>
+            </div>
             <button type="submit" style="padding: 0.6rem 1.5rem;">{{ _('filter') }}</button>
         </form>
 

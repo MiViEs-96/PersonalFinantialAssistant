@@ -3,9 +3,26 @@
 {% block title %}{{ _('current_balance') }}{% endblock %}
 
 {% block content %}
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-        <h2>{{ _('current_balance') }}</h2>
-        {% if current_month == first_month %}
+    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
+        <div>
+            <h2>{{ _('current_balance') }} {% if is_joint %}({{ _('joint_view') }}){% endif %}</h2>
+
+            <form method="GET" style="display: flex; gap: 0.5rem; align-items: center; margin-top: 0.5rem;">
+                <label for="compare_user" style="font-size: 0.8rem; margin: 0;">{{ _('compare_with') }}:</label>
+                <select name="compare_user" id="compare_user" onchange="this.form.submit()" style="padding: 0.3rem; font-size: 0.8rem; width: auto;">
+                    <option value="none">{{ _('none') }}</option>
+                    {% for user in users %}
+                        {% if user.nickname != session['nickname'] %}
+                            <option value="{{ user.nickname }}" {% if compare_user == user.nickname %}selected{% endif %}>
+                                {{ user.nickname }}
+                            </option>
+                        {% endif %}
+                    {% endfor %}
+                </select>
+            </form>
+        </div>
+
+        {% if current_month == first_month and not is_joint %}
         <a href="{{ url_for('set_initial_balance') }}" class="btn-secondary" style="text-decoration: none; padding: 0.5rem 1rem; border-radius: 8px;">
             ✏️ {{ _('modify_balance') }}
         </a>
@@ -18,7 +35,7 @@
             <thead>
                 <tr>
                     <th>{{ _('nickname') }}</th>
-                    <th>{{ _('available_money') }}</th>
+                    <th>{% if is_joint %}{{ _('total_available') }}{% else %}{{ _('available_money') }}{% endif %}</th>
                     {% if investment_total is not none %}
                     <th>{{ _('investment') }}</th>
                     {% endif %}
