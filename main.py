@@ -706,13 +706,13 @@ if __name__ == '__main__':
     # Verifico le tabelle all'avvio
     from database_manager import init_db
     init_db()
-
+    
     # Avvio il broadcast mDNS per tumitumi.local
     # In modalità debug=True Flask avvia due processi, quindi controlliamo se è il processo principale
     import os
     if os.environ.get('WERKZEUG_RUN_MAIN') == 'true' or not app.debug:
         zc, info = start_mdns_broadcast("tumitumi", 5000)
-
+    
     # Host 0.0.0.0 makes it accessible on the local network
     try:
         app.run(host='0.0.0.0', port=5000, debug=True)
@@ -727,7 +727,7 @@ if __name__ == '__main__':
                         zc.unregister_service(info)
                         zc.close()
                     except: pass
-
+                
                 # Run cleanup in a separate thread with a timeout to avoid hanging the main process
                 t = threading.Thread(target=stop_zc)
                 t.start()
