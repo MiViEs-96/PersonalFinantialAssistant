@@ -11,6 +11,7 @@ import threading
 from flask import jsonify, make_response
 from mdns_broadcaster import start_mdns_broadcast
 from googletrans import Translator
+from database_manager import INVESTMENT_KEYWORDS
 
 app = Flask(__name__)
 
@@ -139,7 +140,7 @@ def index():
     if prev_balance != 0:
         variation = ((monthly_balance - prev_balance) / abs(prev_balance)) * 100
     elif monthly_balance != 0:
-        variation = 100 # From 0 to something is 100% gain
+        variation = 100 if monthly_balance > 0 else -100 # Correctly handle 0 -> positive or 0 -> negative
 
     # Build category translations map for JS
     cat_translations = {}
@@ -198,7 +199,7 @@ def add_transaction():
             )
 
             # Update investment summary if applicable
-            if cat.lower() in ['investment', 'investimento']:
+            if cat.lower() in INVESTMENT_KEYWORDS:
                 month = date_val[:7] # YYYY-MM
                 database_manager.update_investment_summary(nickname, month, amt, dir_val)
 
@@ -248,12 +249,16 @@ def translate_category_api():
     if not name:
         return jsonify({"error": "No name"}), 400
 
-    translator = Translator()
+    translator = Translator(timeout=5) # 5 seconds timeout
     try:
         import asyncio
 
         def run_translate(text, src, dest):
             try:
+                # Basic check for empty or too long text
+                if not text or len(text) > 100:
+                    return text
+
                 res = translator.translate(text, src=src, dest=dest)
                 if hasattr(res, '__await__'):
                     # Handle async return in a sync context
@@ -262,7 +267,7 @@ def translate_category_api():
                     except RuntimeError:
                         loop = asyncio.new_event_loop()
                         asyncio.set_event_loop(loop)
-                    res = loop.run_until_complete(res)
+                    res = loop.run_until_complete(asyncio.wait_for(res, timeout=3.0))
 
                 # Check for empty text in result
                 if not res or not res.text:
@@ -469,84 +474,71 @@ def current_balance():
     if not first_month:
         return redirect(url_for('set_initial_balance'))
 
-    for u in compare_users:
-        comp_first = database_manager.get_user_first_balance_month(u)
-        if comp_first and (not first_month or comp_first < first_month):
-            first_month = comp_first
+    # 2. Get history rows (Optimized & Unlimited)
+    all_involved = [nickname] + compare_users
+    user_starts = {} # {user: {month: initial_bal}}
+    for u in all_involved:
+        bals = database_manager.get_all_user_balances(u)
+        if bals:
+            user_starts[u] = {b['month']: b['balance'] for b in bals}
 
-    # 2. Get history rows
-    first_date = datetime.strptime(first_month, '%Y-%m')
+    earliest_month = min(min(d.keys()) for d in user_starts.values())
+
+    # Generate ALL months from earliest to today
     months = []
-    curr = first_date
-    while curr <= datetime.combine(today, datetime.min.time()) and len(months) < 5:
+    curr = datetime.strptime(earliest_month, '%Y-%m')
+    while curr.strftime('%Y-%m') <= current_month_str:
         months.append(curr.strftime('%Y-%m'))
         if curr.month == 12:
             curr = curr.replace(year=curr.year + 1, month=1)
         else:
             curr = curr.replace(month=curr.month + 1)
 
+    # Get all transactions for all involved users
+    trans_by_month = {} # {month: {'inc': 0, 'exp': 0}}
+    for u in all_involved:
+        u_trans = database_manager.get_stats_data(u)
+        for t in u_trans:
+            m = t['date'][:7]
+            if m not in trans_by_month:
+                trans_by_month[m] = {'inc': 0, 'exp': 0}
+            if t['direction'] == 'entrata':
+                trans_by_month[m]['inc'] += t['amount']
+            else:
+                trans_by_month[m]['exp'] += t['amount']
+
     history_rows = []
     running_balance = 0
+    for m in months:
+        # Add any initial balances set for THIS month
+        for u in all_involved:
+            if u in user_starts and m in user_starts[u]:
+                running_balance += user_starts[u][m]
 
-    for i, m in enumerate(months):
-        if i == 0:
-            bal_total = database_manager.get_user_balance(nickname, m) or 0
-            for u in compare_users:
-                bal_total += (database_manager.get_user_balance(u, m) or 0)
-            running_balance = bal_total
-            history_rows.append({"month": m, "balance": running_balance})
-        else:
-            prev_month = months[i-1]
-            start_of_prev = date(datetime.strptime(prev_month, '%Y-%m').year, datetime.strptime(prev_month, '%Y-%m').month, 1).isoformat()
-            start_of_curr = date(datetime.strptime(m, '%Y-%m').year, datetime.strptime(m, '%Y-%m').month, 1)
-            end_of_prev = (start_of_curr - timedelta(days=1)).isoformat()
+        # History row represents balance at START of month m
+        history_rows.append({"month": m, "balance": running_balance})
 
-            data_combined = database_manager.get_stats_data(nickname, start_date=start_of_prev, end_date=end_of_prev)
-            inc_total = sum(t['amount'] for t in data_combined if t['direction'] == 'entrata')
-            exp_total = sum(t['amount'] for t in data_combined if t['direction'] == 'uscita')
-
-            for u in compare_users:
-                u_data = database_manager.get_stats_data(u, start_date=start_of_prev, end_date=end_of_prev)
-                inc_total += sum(t['amount'] for t in u_data if t['direction'] == 'entrata')
-                exp_total += sum(t['amount'] for t in u_data if t['direction'] == 'uscita')
-
-            # Initial balance for users who start later
-            for u in compare_users:
-                comp_start = database_manager.get_user_first_balance_month(u)
-                if comp_start == m:
-                    running_balance += (database_manager.get_user_balance(u, m) or 0)
-
-            running_balance = running_balance + inc_total - exp_total
-            history_rows.append({"month": m, "balance": running_balance})
+        # Update running balance with transactions of month m
+        m_data = trans_by_month.get(m, {'inc': 0, 'exp': 0})
+        running_balance += (m_data['inc'] - m_data['exp'])
 
     # 3. Middle Table Data
-    start_of_now = date(today.year, today.month, 1).isoformat()
-    now_data1 = database_manager.get_stats_data(nickname, start_date=start_of_now)
-    now_inc = sum(t['amount'] for t in now_data1 if t['direction'] == 'entrata')
-    now_exp = sum(t['amount'] for t in now_data1 if t['direction'] == 'uscita')
-
-    for u in compare_users:
-        now_data2 = database_manager.get_stats_data(u, start_date=start_of_now)
-        now_inc += sum(t['amount'] for t in now_data2 if t['direction'] == 'entrata')
-        now_exp += sum(t['amount'] for t in now_data2 if t['direction'] == 'uscita')
-
-    current_month_row = next((r for r in history_rows if r['month'] == current_month_str), history_rows[-1])
-    available_money = current_month_row['balance'] + now_inc - now_exp
+    available_money = running_balance # After current month's transactions
 
     # Investment
     def get_user_inv(nick):
         trans = database_manager.get_transactions_by_user(nick)
-        inv_cat = None
+        inv_cats = []
         with open('categories.json', 'r') as f:
             all_cats = json.load(f)
             for ctype in all_cats:
                 for cat in all_cats[ctype]:
-                    if cat.lower() in ['investment', 'investimento']:
-                        inv_cat = cat; break
-                if inv_cat: break
-        if not inv_cat: return 0
-        exp = sum(t['amount'] for t in trans if t['category'] == inv_cat and t['direction'] == 'uscita')
-        inc = sum(t['amount'] for t in trans if t['category'] == inv_cat and t['direction'] == 'entrata')
+                    if cat.lower() in INVESTMENT_KEYWORDS:
+                        inv_cats.append(cat)
+
+        if not inv_cats: return 0
+        exp = sum(t['amount'] for t in trans if t['category'] in inv_cats and t['direction'] == 'uscita')
+        inc = sum(t['amount'] for t in trans if t['category'] in inv_cats and t['direction'] == 'entrata')
         return abs(exp - inc)
 
     investment_total = get_user_inv(nickname)
@@ -588,7 +580,7 @@ def current_balance():
                            nickname=nick_display,
                            available_money=available_money,
                            investment_total=investment_total,
-                           history_rows=history_rows,
+                           history_rows=history_rows[-5:],
                            balance_chart=balance_chart,
                            investment_chart=investment_chart,
                            first_month=first_month,
