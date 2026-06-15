@@ -2,6 +2,7 @@ import sqlite3
 from datetime import datetime
 
 DATABASE_NAME = 'finance_assistant.db'
+INVESTMENT_KEYWORDS = ['investment', 'investimento', '投资']
 
 def get_db_connection():
     conn = sqlite3.connect(DATABASE_NAME)
@@ -63,27 +64,24 @@ def init_db():
 
     conn.commit()
 
-    # Migration: Populate investment_summaries from existing transactions
-    # To avoid double counting on every restart, we clear and re-populate OR only do it if empty.
-    # Re-populating from scratch ensures consistency if categories were renamed.
-    conn.execute("DELETE FROM investment_summaries")
-
-    transactions = conn.execute("SELECT nickname, date, amount, direction, category FROM transactions").fetchall()
-    for t in transactions:
-        if t['category'].lower() in ['investment', 'investimento']:
-            month = t['date'][:7]
-            if t['direction'] == 'uscita':
-                conn.execute('''
-                    INSERT INTO investment_summaries (nickname, month, invested) VALUES (?, ?, ?)
-                    ON CONFLICT(nickname, month) DO UPDATE SET invested = invested + excluded.invested
-                ''', (t['nickname'], month, t['amount']))
-            else:
-                conn.execute('''
-                    INSERT INTO investment_summaries (nickname, month, withdrawn) VALUES (?, ?, ?)
-                    ON CONFLICT(nickname, month) DO UPDATE SET withdrawn = withdrawn + excluded.withdrawn
-                ''', (t['nickname'], month, t['amount']))
-
-    conn.commit()
+    # Migration: Populate investment_summaries from existing transactions ONLY if table is empty
+    count = conn.execute("SELECT COUNT(*) FROM investment_summaries").fetchone()[0]
+    if count == 0:
+        transactions = conn.execute("SELECT nickname, date, amount, direction, category FROM transactions").fetchall()
+        for t in transactions:
+            if t['category'].lower() in INVESTMENT_KEYWORDS:
+                month = t['date'][:7]
+                if t['direction'] == 'uscita':
+                    conn.execute('''
+                        INSERT INTO investment_summaries (nickname, month, invested) VALUES (?, ?, ?)
+                        ON CONFLICT(nickname, month) DO UPDATE SET invested = invested + excluded.invested
+                    ''', (t['nickname'], month, t['amount']))
+                else:
+                    conn.execute('''
+                        INSERT INTO investment_summaries (nickname, month, withdrawn) VALUES (?, ?, ?)
+                        ON CONFLICT(nickname, month) DO UPDATE SET withdrawn = withdrawn + excluded.withdrawn
+                    ''', (t['nickname'], month, t['amount']))
+        conn.commit()
     conn.close()
 
 # --- User Management ---
@@ -131,9 +129,13 @@ def update_user_profile(user_id, old_nickname, new_full_name, new_nickname):
         conn.execute('UPDATE users SET full_name = ?, nickname = ? WHERE id = ?',
                      (new_full_name, new_nickname, user_id))
 
-        # 2. Update all transactions if nickname changed
+        # 2. Update all related tables if nickname changed
         if old_nickname != new_nickname:
             conn.execute('UPDATE transactions SET nickname = ? WHERE nickname = ?',
+                         (new_nickname, old_nickname))
+            conn.execute('UPDATE user_balances SET nickname = ? WHERE nickname = ?',
+                         (new_nickname, old_nickname))
+            conn.execute('UPDATE investment_summaries SET nickname = ? WHERE nickname = ?',
                          (new_nickname, old_nickname))
 
         conn.commit()
